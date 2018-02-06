@@ -3,7 +3,7 @@
 A simple set of utilities to automate experiment definition, submission and monitoring.
 Support for Sun Grid Engine (SGE) jobs
 
-## ``qsub`` ile generation
+## qsub file generation
 It contains utilities to generate files that can be submitted using ``qsub``. These utils help
 to create submission scripts that configure SGE parameters (like resource requesting), load modules
 if ``module load`` is used, activate virtual environments using either ``conda`` or ``virtualenv``.

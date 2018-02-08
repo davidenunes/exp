@@ -1,4 +1,4 @@
-from params import ParamSpace
+from exp.params import ParamSpace
 from subprocess import run
 from exp import qsub
 from enum import Enum
@@ -23,7 +23,13 @@ class GridConf:
 
 
 class GridRunner:
-    """ Takes a :class:`GridConf` and uses it to submit jobs based on parameter :obj:`dict` or :class:`ParamSpace`"""
+    """ GridRunner.
+
+    Can submit jobs to the grid based on a :class:`GridConf`.
+
+    Submissions can be made based on a single parameter dictionary or
+    a :class:`ParamSpace` instance.
+    """
 
     def __init__(self, grid_conf):
         self.grid_conf = grid_conf
@@ -41,23 +47,18 @@ class GridRunner:
                                 env_name=cfg.venv_name,
                                 script_params=param_dict)
 
-    def submit(self, script_path, job_filename, param_dict):
-        """ submit an experiment
-
-        Runs a single experiment against a parameter
-
-        Returns:
-
+    def submit_one(self, script_path, job_filename, param_dict):
+        """ Submit a single job to the grid
         """
         self.write_job_file(script_path, job_filename, param_dict)
 
         cmd = ["qsub", job_filename]
         return run(cmd)
 
-    def submit_all(self, script_path, job_filename, param_space: ParamSpace):
+    def submit_all(self, script_path: str, job_filename: str, param_space: ParamSpace):
         self.param_space.write_grid_summary()
 
         param_grid = param_space.param_grid(include_id=True)
 
         for params in param_grid:
-            self.submit(script_path, job_filename, params)
+            self.submit_one(script_path, job_filename, params)

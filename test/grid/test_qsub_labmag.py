@@ -2,7 +2,7 @@ import unittest
 from subprocess import call
 import os
 
-from exp.grid import qsub
+from exp import qsub
 
 
 class MyTestCase(unittest.TestCase):

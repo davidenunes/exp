@@ -188,7 +188,7 @@ def qsub_file_venv(out_filename,
                     **kwargs)
 
 
-def qsub_file_conda(out_filename,
+def qsub_file_conda(job_filename,
                     script_path,
                     env_name,
                     **kwargs):
@@ -197,12 +197,12 @@ def qsub_file_conda(out_filename,
 
         Args:
 
-            out_filename: name for the resulting file (e.g. "job0.sh")
+            job_filename: name for the resulting file (e.g. "job0.sh")
             script_path: path to the script to be executed using python
             env_name: conda environment name
             **kwargs: args for qsub file (see :func:`~qsub.write_qsub_file`
         """
-    write_qsub_file(out_filename=out_filename,
+    write_qsub_file(out_filename=job_filename,
                     script_path=script_path,
                     env_activate=conda_activate(env_name),
                     env_deactivate=conda_deactivate,

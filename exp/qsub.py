@@ -3,8 +3,27 @@ import os
 bash_header = "#!/bin/bash\n"
 
 
+def _as_list(elems):
+    """ returns a list from the given element(s)
+
+    Args:
+        elems: one or more objects
+
+    Returns:
+        a list with the elements in elems
+    """
+    if elems is None:
+        elems = []
+    elif isinstance(elems, (list, tuple)):
+        elems = list(elems)
+    else:
+        elems = [elems]
+    return elems
+
+
 def sge(job_name=None,
         queue_name=None,
+        sge_params=None,
         parallel_env="smp",
         num_cores=4,
         max_memory=None,
@@ -16,6 +35,17 @@ def sge(job_name=None,
     """
 
     Args:
+        sge_params: list of standalone parameters to be added (one per line)
+            example::
+
+                for sge params= "V", generates the line
+                #$ -V
+
+                for sge params= ["V","cwd"], generates the lines:
+                #$ -V
+                #$ -cwd
+        it prints the parameters in a case-sensitive manner
+
         max_memory: a string with the maximum amount of memory required (memory per processor slot)
         resource_dict: you can request multiple resources with a dict {resource_name:value} will result in a call
             "#$ -l key1=value1,key2=value2
@@ -31,6 +61,11 @@ def sge(job_name=None,
         run_in_cwd: run job in the current directory?
     """
     job_params = []
+    if sge_params is not None:
+        sge_params = _as_list(sge_params)
+        for param in sge_params:
+            job_params.append("#$ -{param}\n".format(param=param))
+
     if queue_name is not None:
         job_params.append("#$ -q {queue}\n".format(queue=queue_name))
 
@@ -69,7 +104,35 @@ def module_load(modules=[]):
     return env_load
 
 
+def pythonpath_add(path, validate=False):
+    """ line that adds a path to PYTHONPATH env var
+
+    Args:
+        path: path to be added to PYTHONPATH
+        validate: if True checks if path exists and is a dir
+
+    Returns:
+        str: a string with a line in bash used to update the PYTHONPATH with a given path
+
+    """
+    if validate:
+        if not os.path.exists(path):
+            raise ValueError("trying to add invalid path to PYTHON: {p} does not exist".format(p=path))
+
+        if not os.path.isdir(path):
+            raise ValueError("trying to add invalid path to PYTHONPATH: {p} should be a dir".format(p=path))
+    return "export PYTHONPATH=\"${PYTHONPATH}:" + path + '\"\n'
+
+
 def conda_activate(env_name):
+    """ conda environment activate
+
+    Args:
+        env_name: name of the environment
+
+    Returns:
+        str: a string with the command to activate a given conda environment
+    """
     return "source activate {env}\n".format(env=env_name)
 
 
@@ -77,7 +140,7 @@ conda_deactivate = "source deactivate\n"
 
 
 def venv_activate(venv_root, env_name):
-    """ Str for virtualenv activation
+    """ virtualenv activation
 
     Args:
         venv_root: base dir for the virtual environments
@@ -100,11 +163,13 @@ def write_qsub_file(out_filename,
                     env_activate,
                     env_deactivate,
                     script_params=None,
+                    pythonpath=None,
                     job_name=None,
                     queue_name=None,
                     parallel_env="smp",
                     num_cores=4,
                     max_memory=None,
+                    sge_params=None,
                     resource_dict=None,
                     std_out_file=None,
                     std_err_file=None,
@@ -120,6 +185,8 @@ def write_qsub_file(out_filename,
 
     Args:
 
+        sge_params: list or single str case-sensitive params without arguments
+        pythonpath: a list with the paths to add to python path before executing the script
         out_filename: qsub script file name (e.g. something.sh)
         script_path: path to the python script to be executed using python script_path
         env_activate: line that activates the environment to be used
@@ -142,6 +209,7 @@ def write_qsub_file(out_filename,
 
     qsub_file.extend(sge(job_name,
                          queue_name,
+                         sge_params,
                          parallel_env,
                          num_cores, max_memory,
                          resource_dict,
@@ -151,6 +219,12 @@ def write_qsub_file(out_filename,
                          working_dir))
 
     qsub_file.extend(module_load(module_names))
+
+    if pythonpath is not None:
+        pythonpath = _as_list(pythonpath)
+        exports = [pythonpath_add(path) for path in pythonpath]
+        qsub_file.extend(exports)
+
     qsub_file.append(env_activate)
 
     if script_params is not None and len(script_params) > 0:
@@ -164,46 +238,3 @@ def write_qsub_file(out_filename,
 
     with open(out_filename, "w") as sh_file:
         sh_file.writelines(qsub_file)
-
-
-def qsub_file_venv(out_filename,
-                   script_path,
-                   venv_root,
-                   venv_name,
-                   **kwargs):
-    """ Creates a file that can be submitted to a sge queue system using qsub
-    and activating a virtualenv environment
-
-    Args:
-        out_filename: name for the resulting file (e.g. "job0.sh")
-        script_path: path to the script to be executed using python
-        venv_root: path to the folder where all the virtual envs are installed
-        venv_name: name of the virtual env to be activated
-        **kwargs: args for qsub file (see :func:`~qsub.write_qsub_file`
-    """
-    write_qsub_file(out_filename=out_filename,
-                    script_path=script_path,
-                    env_activate=venv_activate(venv_root, venv_name),
-                    env_deactivate=venv_deactivate,
-                    **kwargs)
-
-
-def qsub_file_conda(job_filename,
-                    script_path,
-                    env_name,
-                    **kwargs):
-    """ Creates a file that can be submitted to a sge queue system using qsub
-        and activating a conda environment
-
-        Args:
-
-            job_filename: name for the resulting file (e.g. "job0.sh")
-            script_path: path to the script to be executed using python
-            env_name: conda environment name
-            **kwargs: args for qsub file (see :func:`~qsub.write_qsub_file`
-        """
-    write_qsub_file(out_filename=job_filename,
-                    script_path=script_path,
-                    env_activate=conda_activate(env_name),
-                    env_deactivate=conda_deactivate,
-                    **kwargs)

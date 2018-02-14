@@ -9,6 +9,7 @@ setup(name='exp',
       author_email='davidelnunes@gmail.com',
       packages=['exp'],
       install_requires=[
-          'tabulate'
+          'tabulate',
+          'configobj'
       ]
       )

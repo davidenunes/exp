@@ -3,6 +3,15 @@ from exp import qsub
 from subprocess import run
 from exp.params import ParamSpace
 from collections import namedtuple
+from itertools import zip_longest
+
+
+def _groupe_it(iterable, n, fillvalue=None):
+    "Collect data into fixed-length chunks or blocks"
+    # grouper('ABCDEFG', 3, 'x') --> ABC DEF Gxx"
+    args = [iter(iterable)] * n
+    return zip_longest(*args, fillvalue=fillvalue)
+
 
 GridConf = namedtuple('GridConf', ['venv_name',
                                    'venv_root',
@@ -121,7 +130,7 @@ class GridRunner:
         return None
 
     def submit_all(self, python_script, param_space: ParamSpace, job_filename="job", run_in_cwd=False,
-                   working_dir=None, call_qsub=True, write_params_file=True):
+                   working_dir=None, call_qsub=True, write_params_file=True, group=1):
         """ Submit all jobs in a  ``ParamSpace``
 
         creates a submission script for each each parameter configuration in the given ``ParamSpace``
@@ -139,12 +148,21 @@ class GridRunner:
             working_dir (str): sets the current working dir to the provided value
             run_in_cwd (bool): if set to True, adds the cwd param to the grid job script which specifies
             that the job is the be executed in the current working directory: uses sge path alias facilities
+            group: each job calls n number of scripts with their respective params (masks number of real jobs in the
+            grid but has to perform each run in the job sequentially
         """
         param_space.write_grid_summary(job_filename + '_params.csv')
         param_grid = param_space.param_grid(include_id=True, id_param="id")
 
-        for params in param_grid:
-            i = params["id"]
-            jobname = "{job}_{i}".format(job=job_filename, i=i)
+        grouped_params = _groupe_it(param_grid, group)
 
-            self.submit_one(python_script, jobname, params, jobname, run_in_cwd, working_dir, call_qsub)
+        for params_ls in grouped_params:
+            params_ls = [param for param in params_ls if param is not None]
+
+            ids = [params["id"] for params in params_ls]
+            if len(ids) > 1:
+                jobname = "{job}_{id0}_{id1}".format(job=job_filename, id0=ids[0], id1=ids[-1])
+            else:
+                jobname = "{job}_{id}".format(job=job_filename, id=ids[0])
+
+            self.submit_one(python_script, jobname, params_ls, jobname, run_in_cwd, working_dir, call_qsub)

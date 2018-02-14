@@ -227,13 +227,19 @@ def write_qsub_file(job_filename,
 
     qsub_file.append(env_activate)
 
-    if script_params is not None and len(script_params) > 0:
-        script_params_str = " ".join(["-{p}={v}".format(p=param, v=script_params[param]) for param in script_params])
-    else:
-        script_params_str = ""
+    script_param_list = _as_list(script_params)
 
-    script_run = "python {path} {params}\n".format(path=script_path, params=script_params_str)
-    qsub_file.append(script_run)
+    # we might want to group multiple script runs withing the same job file
+    for script_params in script_param_list:
+        if script_params is not None and len(script_params) > 0:
+            script_params_str = " ".join(
+                ["-{p}={v}".format(p=param, v=script_params[param]) for param in script_params])
+        else:
+            script_params_str = ""
+
+        script_run = "python {path} {params}\n".format(path=script_path, params=script_params_str)
+        qsub_file.append(script_run)
+
     qsub_file.append(env_deactivate)
 
     # add extension

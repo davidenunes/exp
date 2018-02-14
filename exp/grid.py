@@ -2,43 +2,48 @@ from enum import Enum
 from exp import qsub
 from subprocess import run
 from exp.params import ParamSpace
+from collections import namedtuple
+
+GridConf = namedtuple('GridConf', ['venv_name',
+                                   'venv_root',
+                                   'venv',
+                                   'pythonpath',
+                                   'parallel_env',
+                                   'num_cores',
+                                   'queue_name',
+                                   'sge_params',
+                                   'resource_dict',
+                                   'module_names'])
 
 
-class GridConf:
-    """ GridConf grid configuration object
+class VirtualEnvs(Enum):
+    Conda = 0
+    VirtualEnv = 1
 
-    Note: I could use just a dict but this way I get the parameters to be documented
-    """
 
-    class VENVS(Enum):
-        VIRTUALENV: 0
-        CONDA: 1
+def grid_conf(venv_name,
+              venv_root=None,
+              venv=VirtualEnvs.Conda,
+              pythonpath=None,
+              parallel_env="smp",
+              num_cores=8,
+              queue_name=None,
+              sge_params=None,
+              resource_dict=None,
+              module_names=[]):
+    if venv_root is None and venv is VirtualEnvs.VirtualEnv:
+        raise ValueError("if venv is a virtualenv, venv_root path should be supplied")
 
-    def __init__(self,
-                 venv_name,
-                 venv_root=None,
-                 venv=VENVS.CONDA,
-                 pythonpath=None,
-                 parallel_env="smp",
-                 num_cores=8,
-                 queue_name=None,
-                 sge_params=None,
-                 resource_dict=None,
-                 module_names=[]
-                 ):
-        if venv_root is None and venv is GridConf.VENVS.VIRTUALENV:
-            raise ValueError("if venv is a virtualenv, venv_root path should be supplied")
-
-        self.venv_root = venv_root
-        self.venv = venv
-        self.venv_name = venv_name
-        self.pythonpath = pythonpath
-        self.parallel_env = parallel_env
-        self.num_cores = num_cores
-        self.queue_name = queue_name
-        self.sge_params = sge_params
-        self.resource_dict = resource_dict
-        self.module_names = module_names
+    return GridConf(venv_name,
+                    venv_root,
+                    venv,
+                    pythonpath,
+                    parallel_env,
+                    num_cores,
+                    queue_name,
+                    sge_params,
+                    resource_dict,
+                    module_names)
 
 
 class GridRunner:
@@ -67,12 +72,14 @@ class GridRunner:
         """
         cfg = self.grid_conf
 
-        if cfg.venv == GridConf.VENVS.CONDA:
+        if cfg.venv is VirtualEnvs.Conda:
             env_activate = qsub.conda_activate(cfg.venv_name)
             env_deactivate = qsub.conda_deactivate
-        elif cfg is GridConf.VENVS.VIRTUALENV:
+        elif cfg.venv is VirtualEnvs.VirtualEnv:
             env_activate = qsub.venv_activate(cfg.venv_root, cfg.venv_name)
             env_deactivate = qsub.venv_deactivate
+        else:
+            raise ValueError("invalid venv set in grid configuration")
 
         qsub.write_qsub_file(job_filename=job_filename,
                              script_path=script_path,
@@ -91,10 +98,12 @@ class GridRunner:
                              working_dir=working_dir
                              )
 
-    def submit_one(self, script_path, job_filename, param_dict, job_name="job", run_in_cwd=False, working_dir=None):
+    def submit_one(self, script_path, job_filename, param_dict, job_name="job", run_in_cwd=False, working_dir=None,
+                   call_qsub=True):
         """ Submit a single job to the grid
 
         Args:
+            call_qsub: if False, generates the job file only
             job_name: sge param that specifies the name for the job (as appears in qstat)
             param_dict: a dictionary with the parameters to be passed to the python script
             job_filename: filename for the filename.sh file to be generated
@@ -106,11 +115,13 @@ class GridRunner:
         """
         self.write_job_file(script_path, job_filename, param_dict, job_name, run_in_cwd, working_dir)
 
-        cmd = ["qsub", job_filename]
-        return run(cmd)
+        if call_qsub:
+            cmd = ["qsub", job_filename]
+            return run(cmd)
+        return None
 
     def submit_all(self, python_script, param_space: ParamSpace, job_filename="job", run_in_cwd=False,
-                   working_dir=None):
+                   working_dir=None, call_qsub=True, write_params_file=True):
         """ Submit all jobs in a  ``ParamSpace``
 
         creates a submission script for each each parameter configuration in the given ``ParamSpace``
@@ -118,8 +129,10 @@ class GridRunner:
         and runs the given script with each of the parameter combinations
 
         Args:
+            write_params_file: if True writes a csv with all the parameters in the parameter space parameter grid
+            call_qsub: if False, does not submit the jobs instead, it generates the submission files only
             job_filename: base job submission filename, submit all will add an id to the name, example:
-            ``job_0.sh``.
+            ``job`` -> ``job_0.sh``.
             param_space: ``ParamSpace`` with all the possible parameter configurations the python script will be
             run with.
             python_script: path to the python script to be executed
@@ -127,10 +140,11 @@ class GridRunner:
             run_in_cwd (bool): if set to True, adds the cwd param to the grid job script which specifies
             that the job is the be executed in the current working directory: uses sge path alias facilities
         """
-        param_space.write_grid_summary()
+        param_space.write_grid_summary(job_filename + '_params.csv')
         param_grid = param_space.param_grid(include_id=True, id_param="id")
 
         for params in param_grid:
             i = params["id"]
             jobname = "{job}_{i}".format(job=job_filename, i=i)
-            self.submit_one(python_script, jobname, params, jobname, run_in_cwd, working_dir)
+
+            self.submit_one(python_script, jobname, params, jobname, run_in_cwd, working_dir, call_qsub)

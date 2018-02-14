@@ -158,7 +158,7 @@ def venv_activate(venv_root, env_name):
 venv_deactivate = "deactivate\n"
 
 
-def write_qsub_file(out_filename,
+def write_qsub_file(job_filename,
                     script_path,
                     env_activate,
                     env_deactivate,
@@ -187,11 +187,11 @@ def write_qsub_file(out_filename,
 
         sge_params: list or single str case-sensitive params without arguments
         pythonpath: a list with the paths to add to python path before executing the script
-        out_filename: qsub script file name (e.g. something.sh)
+        job_filename: qsub script file name (e.g. something.sh)
         script_path: path to the python script to be executed using python script_path
         env_activate: line that activates the environment to be used
         env_deactivate: line that deactivates the environment to be used
-        job_name: name for the grid job to be submitted
+        job_name: name for the grid job to be submitted without extension
         queue_name: name of the queue where the job is to be submitted
         parallel_env: parallel env name (mp, smp, mpi)
         num_cores: number of cores requested in the given environment
@@ -236,5 +236,9 @@ def write_qsub_file(out_filename,
     qsub_file.append(script_run)
     qsub_file.append(env_deactivate)
 
-    with open(out_filename, "w") as sh_file:
+    # add extension
+    if not job_filename.lower().endswith('.sh'):
+        job_filename += '.sh'
+
+    with open(job_filename, "w") as sh_file:
         sh_file.writelines(qsub_file)

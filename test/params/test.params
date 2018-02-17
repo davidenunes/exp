@@ -1,0 +1,27 @@
+[corpus]
+type = value
+value = /Users/davide/data/datasets/ptb/
+[ngram_size]
+type = value
+value = 4
+[out_dir]
+type = value
+value = /Users/davide/dev/exp/test/params
+[embed_dim]
+type = list
+values = 128, 256
+[embed_init]
+type = value
+value = uniform
+[embed_limits]
+type = value
+value = 0.01
+[logit_init]
+type = value
+value = uniform
+[logit_limits]
+type = value
+value = 0.01
+[num_h]
+type = list
+values = 1, 2, 3

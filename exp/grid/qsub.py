@@ -88,8 +88,7 @@ def sge(job_name=None,
     if working_dir is not None:
         job_params.append("#$ -wd {dir_path}\n".format(working_dir))
 
-    if resource_dict is not None:
-        resource_dict = dict()
+    if resource_dict is not None and len(resource_dict) > 0:
         res = ["{r}={v}".format(r=r, v=resource_dict[r]) for r in resource_dict.keys()]
         res = ",".join(res)
         job_params.append("#$ -l {resources}\n".format(resources=res))
@@ -160,10 +159,11 @@ venv_deactivate = "deactivate\n"
 
 def write_qsub_file(job_filename,
                     script_path,
-                    env_activate,
-                    env_deactivate,
+                    venv=None,
+                    venv_name=None,
+                    venv_root=None,
                     script_params=None,
-                    pythonpath=None,
+                    pythonpath=[],
                     job_name=None,
                     queue_name=None,
                     parallel_env="smp",
@@ -175,7 +175,7 @@ def write_qsub_file(job_filename,
                     std_err_file=None,
                     run_in_cwd=False,
                     working_dir=None,
-                    module_names=[]
+                    modules=[]
                     ):
     """ Writes a file that can be submitted using the ``qsub`` command.
 
@@ -185,12 +185,14 @@ def write_qsub_file(job_filename,
 
     Args:
 
+        venv_root: path to dir where virtualenv is located
+        venv_name: name of the virtualenv to be activated
         sge_params: list or single str case-sensitive params without arguments
         pythonpath: a list with the paths to add to python path before executing the script
         job_filename: qsub script file name (e.g. something.sh)
         script_path: path to the python script to be executed using python script_path
-        env_activate: line that activates the environment to be used
-        env_deactivate: line that deactivates the environment to be used
+        venv: either ``"conda"`` or ``"virtualenv"`` should be specified, if virtualenv is used,
+        ``virtualenv_root``must be specified
         job_name: name for the grid job to be submitted without extension
         queue_name: name of the queue where the job is to be submitted
         parallel_env: parallel env name (mp, smp, mpi)
@@ -201,10 +203,28 @@ def write_qsub_file(job_filename,
         std_err_file: file where the std err from the job will be written (path is relative to working dir)
         run_in_cwd: if True, runs the script in the current working directory
         working_dir: if a path is supplied, sets the working directory for the job
-        module_names: if the system has a ``module load`` system, you can provide a list of module names and this
+        modules: if the system has a ``module load`` system, you can provide a list of module names and this
         creates the necessary lines to load them
         script_params: dictionary parameter_name:parameter_value
     """
+    if venv != "virtualenv" and venv != "conda":
+        raise ValueError("Invalid virtualenv: expected conda or virtualenv got {} instead".format(venv))
+
+    if venv is not None and venv_name is None:
+        raise ValueError("virtualenv_name cannot be None if virtualenv is specified")
+
+    virtualenv_activate = None
+    virtualenv_deactivate = None
+    if venv == "virtualenv":
+        if venv_root is None:
+            raise ValueError("virtualenv_root cannot be None when virtualenv is \"virtualenv\"")
+
+        virtualenv_activate = venv_activate(venv_root, venv_name)
+        virtualenv_deactivate = venv_deactivate
+    elif venv == "conda":
+        virtualenv_activate = conda_activate(venv_name)
+        virtualenv_deactivate = conda_deactivate
+
     qsub_file = [bash_header]
 
     qsub_file.extend(sge(job_name,
@@ -218,14 +238,15 @@ def write_qsub_file(job_filename,
                          run_in_cwd,
                          working_dir))
 
-    qsub_file.extend(module_load(module_names))
+    qsub_file.extend(module_load(modules))
 
-    if pythonpath is not None:
+    if pythonpath is not None or len(pythonpath) > 0:
         pythonpath = _as_list(pythonpath)
         exports = [pythonpath_add(path) for path in pythonpath]
         qsub_file.extend(exports)
 
-    qsub_file.append(env_activate)
+    if virtualenv_activate is not None:
+        qsub_file.append(virtualenv_activate)
 
     script_param_list = _as_list(script_params)
 
@@ -240,7 +261,8 @@ def write_qsub_file(job_filename,
         script_run = "python {path} {params}\n".format(path=script_path, params=script_params_str)
         qsub_file.append(script_run)
 
-    qsub_file.append(env_deactivate)
+    if virtualenv_deactivate is not None:
+        qsub_file.append(virtualenv_deactivate)
 
     # add extension
     if not job_filename.lower().endswith('.sh'):
@@ -248,3 +270,5 @@ def write_qsub_file(job_filename,
 
     with open(job_filename, "w") as sh_file:
         sh_file.writelines(qsub_file)
+
+    return job_filename

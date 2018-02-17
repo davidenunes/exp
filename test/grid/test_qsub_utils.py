@@ -1,15 +1,19 @@
 import unittest
-from exp import qsub
+from exp.grid import qsub
 
 
 class MyTestCase(unittest.TestCase):
     def test_sgeutils_qsub_params(self):
-        qsub.qsub_file_conda("test_qsub.sh",
+
+        qsub.write_qsub_file("test_qsub.sh",
                              script_path="/home/davide/dev/test/test.py",
-                             env_name="tf",
+                             venv="virtualenv",
+                             venv_root="esbanhanhas",
+                             venv_name="test",
                              script_params={"conf": "params.conf"},
                              pythonpath=["/home/davide/"],
-                             sge_params="V")
+                             sge_params="V",
+                             resource_dict={"gpu":"1","release":"el7"})
 
 
 if __name__ == '__main__':

@@ -1,5 +1,6 @@
 import unittest
-from exp import qsub
+from exp.grid import qsub
+
 
 class MyTestCase(unittest.TestCase):
     def test_pythonpath(self):

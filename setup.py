@@ -10,6 +10,7 @@ setup(name='exp',
       packages=['exp'],
       install_requires=[
           'tabulate',
-          'configobj'
-      ]
+          'configobj',
+          'plac',
+          'numpy']
       )

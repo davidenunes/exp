@@ -13,7 +13,7 @@ DEFAULT_CONFIGS = {
     "mas": {"venv": "conda",
             "venv_name": "deepsign",
             "parallel_env": "smp",
-            "num_cores": 16
+            "num_cores": 8
             },
 
     "ingrid": {"venv": "virtualenv",

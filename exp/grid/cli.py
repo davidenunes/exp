@@ -17,8 +17,8 @@ DEFAULT_CONFIGS = {
             },
 
     "ingrid": {"venv": "virtualenv",
-               "venv_name": "deepsign-gpu",
-               "venv_root": "envs",
+               "venv_name": "deepsign",
+               "venv_root": "~/envs",
                "parallel_env": "mp",
                "num_cores": 8,
                "resource_dict": {"release": "el7"},
@@ -27,12 +27,13 @@ DEFAULT_CONFIGS = {
                },
 
     "ingrid-gpu": {"venv": "virtualenv",
-                   "venv_root": "envs",
-                   "venv_name": "mp",
+                   "venv_name": "deepsign-gpu",
+                   "venv_root": "~/envs",
+                   "parallel-env": "mp",
                    "num_cores": 8,
                    "resource_dict": {"release": "el7", "gpu": "1"},
                    "queue_name": "hpcgrid",
-                   "modules": ["hdf5-1.8.16", "python-3.5.1", "cuda-7.5"]
+                   "modules": ["hdf5-1.8.16", "python-3.5.1", "cuda-9.0"]
                    }
 }
 

@@ -29,7 +29,7 @@ DEFAULT_CONFIGS = {
     "ingrid-gpu": {"venv": "virtualenv",
                    "venv_name": "deepsign-gpu",
                    "venv_root": "~/envs",
-                   "parallel-env": "mp",
+                   "parallel_env": "mp",
                    "num_cores": 8,
                    "resource_dict": {"release": "el7", "gpu": "1"},
                    "queue_name": "hpcgrid",

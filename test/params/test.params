@@ -1,12 +1,12 @@
 [corpus]
 type = value
-value = /Users/davide/data/datasets/ptb/
+value = /home/davex32/data/datasets/ptb/
 [ngram_size]
 type = value
 value = 4
 [out_dir]
 type = value
-value = /Users/davide/dev/exp/test/params
+value = /home/davex32/dev/exp/test/params
 [embed_dim]
 type = list
 values = 128, 256

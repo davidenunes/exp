@@ -36,10 +36,10 @@ def f(x):
     # print("input ",x)
     # process = mp.current_process()
 
-    time.sleep(1 + random.randint(0, 1))
+    time.sleep(0.5 + random.random())
 
 
-pool = mp.Pool(processes=4, initializer=init, initargs=(idQueue,))
+pool = mp.Pool(processes=1, initializer=init, initargs=(idQueue,))
 
 
 def updatepbar(*res):

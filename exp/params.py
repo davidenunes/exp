@@ -30,7 +30,22 @@ class ParamSpace:
 
     def __init__(self, filename=None):
         self.config = cfg.ConfigObj(filename)
-        self.grid_size = 0
+        # if we build it from a file we must get the size
+        self.grid_size = self._compute_size()
+
+    def _compute_size(self):
+        params = self.config.sections
+        if len(params) > 1:
+            size = 1
+
+        for param in params:
+            param_type = self.config[param]["type"]
+            param_value = self.get_param(param, param_type)
+            if param_type == ParamSpace.Types.VALUE:
+                param_value = [param_value]
+            size *= len(param_value)
+
+        return size
 
     def get_params(self):
         return self.config.sections

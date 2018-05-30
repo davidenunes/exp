@@ -22,11 +22,10 @@ def init_gpu_worker(queue):
 
 def gpu_worker(runnable_path, kargs):
     global gpu_id
-
     args = dict(kargs)
 
-    print("runnable: ", runnable_path)
-    print("params: ", args)
+    # print("runnable: ", runnable_path)
+    # print("params: ", args)
 
     runnable_path = os.path.abspath(runnable_path)
     spec = importlib.util.spec_from_file_location("worker", location=runnable_path)

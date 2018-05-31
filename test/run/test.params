@@ -4,6 +4,6 @@ value = "param 1 value"
 [param2]
 type = list
 values = "param 2 value 1", "param 2 value 2"
-#[param3]
-#type = list
-#values = 1,
+[param3]
+type = list
+values = 1, 2, 3, 4, 5, 6

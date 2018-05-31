@@ -20,9 +20,9 @@ def init_gpu_worker(queue):
     os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
 
 
-def gpu_worker(runnable_path, kargs):
+def gpu_worker(runnable_path, kwargs):
     global gpu_id
-    args = dict(kargs)
+    # args = dict(kargs)
 
     # print("runnable: ", runnable_path)
     # print("params: ", args)
@@ -34,10 +34,9 @@ def gpu_worker(runnable_path, kargs):
     # sys.modules["worker"] = module
     # worker = __import__(name="worker")
     try:
-        worker.run(**args)
+        return worker.run(**kwargs)
     except Exception as e:
         return e
-    time.sleep(0.6)
 
 
 def gpu_run(runnable, params, name="exp", ngpus=1, cancel=True, repeat=None):
@@ -58,7 +57,6 @@ def gpu_run(runnable, params, name="exp", ngpus=1, cancel=True, repeat=None):
             sys.exit(1)
 
         ps = ParamSpace(filename=params)
-        ps.add_list("test", [1, 2, 3])
         ps.write_grid_summary(name + '_params.csv')
         param_grid = ps.param_grid(include_id=True, id_param="id")
         n_tasks = ps.grid_size
@@ -75,7 +73,6 @@ def gpu_run(runnable, params, name="exp", ngpus=1, cancel=True, repeat=None):
 
         # load gpu ids to the queue to be read by each worker
         for i in range(ngpus):
-            print("insering ", gpu_ids[i])
             psqueue.put(gpu_ids[i])
 
         pool = mp.Pool(processes=ngpus, initializer=init_gpu_worker, initargs=(psqueue,))
@@ -94,6 +91,8 @@ def gpu_run(runnable, params, name="exp", ngpus=1, cancel=True, repeat=None):
                 if cancel:
                     pool.terminate()
             else:
+                if isinstance(res, str):
+                    pbar.write(res)
                 pbar.update()
                 successful.add(worker_id)
 

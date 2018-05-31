@@ -7,8 +7,7 @@ import multiprocessing as mp
 import GPUtil as gpu
 from tqdm import tqdm
 import importlib
-import time
-
+import logging
 import traceback
 
 from functools import partial
@@ -31,8 +30,7 @@ def gpu_worker(runnable_path, kwargs):
     spec = importlib.util.spec_from_file_location("worker", location=runnable_path)
     worker = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(worker)
-    # sys.modules["worker"] = module
-    # worker = __import__(name="worker")
+
     try:
         return worker.run(**kwargs)
     except Exception as e:
@@ -40,6 +38,14 @@ def gpu_worker(runnable_path, kwargs):
 
 
 def gpu_run(runnable, params, name="exp", ngpus=1, cancel=True, repeat=None):
+    # setup logger
+    logger = logging.getLogger(__name__)
+    handler = logging.FileHandler('{name}.log'.format(name=name))
+    handler.setLevel(logging.ERROR)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+
     # detecting gpus available
     gpu_ids = [g.id for g in gpu.getGPUs()]
     ngpus = min(ngpus, len(gpu_ids))
@@ -83,11 +89,11 @@ def gpu_run(runnable, params, name="exp", ngpus=1, cancel=True, repeat=None):
             """Executed on main process when worker result becomes available
             """
             if isinstance(res, Exception):
-                print("worker terminated with errors: \n")
                 try:
                     raise res
                 except:
                     traceback.print_exc()
+                    logger.error('Worker {} terminated with errors: '.format(worker_id), exc_info=True)
                 if cancel:
                     pool.terminate()
             else:
@@ -115,7 +121,11 @@ def gpu_run(runnable, params, name="exp", ngpus=1, cancel=True, repeat=None):
             all_ids = set(range(ps.grid_size))
         failled_ids = all_ids.difference(successful)
         if len(failled_ids) > 0:
-            pbar.write("failed runs: {}".format(failled_ids))
+            ids = " ".join(map(str, failled_ids))
+            fail_runs = "failed runs: {}".format(ids)
+            print(ids)
+            pbar.write(fail_runs)
+            logger.error(fail_runs)
 
         pbar.close()
 

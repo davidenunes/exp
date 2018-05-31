@@ -9,8 +9,8 @@ def run(param1, param2, **kargs):
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
     # test exceptions
-    # if random.random() < 0.3:
-    #   raise Exception("failled with params: \n{}".format(kargs))
+    if random.random() < 0.3:
+       raise Exception("failled with params: \n{}".format(kargs))
 
     a = tf.random_uniform([100000, 3])
     b = tf.constant([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], shape=[3, 2], name='b')

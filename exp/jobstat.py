@@ -126,7 +126,7 @@ def update_job_stat(conn, job_id, avg_time, n_iter):
     conn.commit()
 
 
-def start_job(conn, job_name, grid_id, status, total_n):
+def start_job(conn, job_name, job_id, status, total_n):
     try:
         status = JobStatus(status)
     except ValueError as e:
@@ -134,10 +134,10 @@ def start_job(conn, job_name, grid_id, status, total_n):
 
     cursor = conn.cursor()
 
-    if grid_id is None:
-        grid_id = "NULL"
+    if job_id is None:
+        job_id = "NULL"
 
-    cursor.execute('''INSERT OR IGNORE INTO job VALUES(NULL,?,?,?)''', (grid_id, job_name, status.value))
+    cursor.execute('''INSERT OR IGNORE INTO job VALUES(NULL,?,?,?)''', (job_id, job_name, status.value))
     job_id = cursor.lastrowid
     start_time = datetime.now()
     if total_n is None:
@@ -200,11 +200,11 @@ def _create_job_status_tables(conn):
 
 
 class JobMonitor:
-    def __init__(self, grid_id, db_file="exp_jobs.db", job_name="job", total_n=None, time_window_size=10,
+    def __init__(self, job_id, db_file="exp_jobs.db", job_name="job", total_n=None, time_window_size=10,
                  time_smooth=0.8):
         self.db_file = db_file
         self.job_name = job_name
-        self.grid_id = grid_id
+        self.job_id = job_id
         self.job_id = None
         self.total_n = total_n
         self.time_window = deque([], maxlen=time_window_size)
@@ -218,7 +218,7 @@ class JobMonitor:
     def start(self):
         self.job_id = start_job(self.conn,
                                 self.job_name,
-                                self.grid_id,
+                                self.job_id,
                                 JobStatus.STARTED,
                                 self.total_n)
 

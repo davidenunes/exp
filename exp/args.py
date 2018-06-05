@@ -19,18 +19,34 @@ class Param(namedtuple('Param', ["typefn", "value", "options"])):
         return super().__new__(cls, typefn, value, options)
 
 
-class defargs(dict):
+class Namespace(object):
+    def __init__(self, dict_attr):
+        if not isinstance(dict_attr, dict):
+            raise TypeError("Namespace requires a dict, {} found".format(dict_attr))
+
+        for k, v in dict_attr.items():
+            self.__setattr__(k, v)
+
+    def __str__(self):
+        attr = ["{}={}".format(k, v) for k, v in self.__dict__.items()]
+
+        return "Namespace({s})".format(s=','.join(attr))
+
+    def __setattr__(self, key, value):
+        super().__setattr__(key, value)
+
+
+class ParamDict(dict):
     def __init__(self, defaults):
         # key -> (typefn,value) e.g. "a": (int,2)
         self.defaults = dict()
-
         self.add_params(defaults)
 
         for arg in self.defaults:
             param = self.defaults[arg]
             dict.__setitem__(self, arg, param.value)
 
-        self.__dict__ = self
+        # self.__dict__ .update(self)
 
     def __setitem__(self, key, val):
         if key in self.defaults:
@@ -53,6 +69,9 @@ class defargs(dict):
     def from_dict(self, args):
         for arg in args:
             self.__setitem__(arg, args[arg])
+
+    def to_namespace(self):
+        return Namespace(self)
 
 
 def as_bool(v):

@@ -6,6 +6,10 @@ import csv
 import os
 
 
+def _repeat_it(iterable, n):
+    return itertools.chain.from_iterable(itertools.repeat(x, n) for x in iterable)
+
+
 class ParamSpace:
     class Types:
         RANGE = "range"
@@ -31,12 +35,15 @@ class ParamSpace:
     def __init__(self, filename=None):
         self.config = cfg.ConfigObj(filename)
         # if we build it from a file we must get the size
+
         self.grid_size = self._compute_size()
 
     def _compute_size(self):
         params = self.config.sections
-        if len(params) > 1:
+        if len(params) > 0:
             size = 1
+        else:
+            return 0
 
         for param in params:
             param_type = self.config[param]["type"]
@@ -104,14 +111,14 @@ class ParamSpace:
             sec["num"] = num
             self._update_grid_size(num)
 
-    def add_range(self, name, start, stop, step):
+    def add_range(self, name, stop, start=0, step=1):
         sec = self._new_param(name)
         sec["type"] = ParamSpace.Types.RANGE
         sec["start"] = start
         sec["stop"] = stop
         sec["step"] = step
 
-        self._update_grid_size(math.ceil(stop / step))
+        self._update_grid_size((stop - start - 1) // step + 1)
 
     def add_value(self, name, value):
         sec = self._new_param(name)
@@ -205,7 +212,7 @@ class ParamSpace:
         else:
             raise TypeError("Unknown Parameter Type")
 
-    def param_grid(self, include_id=False, id_param="id"):
+    def param_grid(self, include_id=False, id_param="id", run_id_param="run_id", nruns=False, runs=1):
         """ Returns a generator of dictionaries with all the possible parameter combinations
         the keys are the parameter names the values are the current value for each parameter
         Note:
@@ -215,6 +222,7 @@ class ParamSpace:
         Args:
             include_id (bool): if True ads a parameter id for each parameter dictionary it outputs
             id_param (str): if :arg:`include_id` is True, this is used as the default name for th id parameter
+            runs (int): number of repeats for each unique configuration
         """
         params = self.config.sections
         param_values = []
@@ -226,10 +234,29 @@ class ParamSpace:
                 param_value = [param_value]
             param_values.append(param_value)
 
+        if include_id and nruns:
+            if runs < 1:
+                raise ValueError("runs must be >0: runs set to {}".format(runs))
+            # add run to parameter names and run number to parameters
+            params.append("run")
+            run_ids = np.linspace(1, runs, runs, dtype=np.int32)
+            param_values.append(run_ids)
+
         param_product = itertools.product(*param_values)
         param_product = (dict(zip(params, values)) for values in param_product)
+
         if include_id:
-            param_product = (dict(param, **{id_param: i}) for i, param in enumerate(param_product))
+            # create ids for each unique configuration
+            ids = np.linspace(0, self.grid_size - 1, self.grid_size, dtype=np.int32)
+            ids = list(_repeat_it(ids, runs))
+            id_param_names = [id_param] * (self.grid_size * runs)
+
+            id_params = [{k: v} for k, v in zip(id_param_names, ids)]
+
+            param_product = ({**p, **i} for i, p in zip(id_params, param_product))
+
+        if include_id:
+            param_product = (dict(param, **{run_id_param: i}) for i, param in enumerate(param_product))
         return param_product
 
     def write(self, filename):

@@ -18,6 +18,7 @@ class ParamSpace:
         VALUE = "value"
         RANDOM = "random"
         RANDINT = "randint"
+        LOGSPACE = "logspace"
 
     @staticmethod
     def from_file(path):
@@ -70,6 +71,15 @@ class ParamSpace:
     def add_linspace(self, name, start, stop, num):
         sec = self._new_param(name)
         sec["type"] = ParamSpace.Types.LINSPACE
+        sec["start"] = start
+        sec["stop"] = stop
+        sec["num"] = num
+
+        self._update_grid_size(num)
+
+    def add_logspace(self, name, start, stop, num):
+        sec = self._new_param(name)
+        sec["type"] = ParamSpace.Types.LOGSPACE
         sec["start"] = start
         sec["stop"] = stop
         sec["num"] = num
@@ -179,6 +189,15 @@ class ParamSpace:
 
         return np.arange(start, stop, step)
 
+    def get_logspace(self, name):
+        param = self._get_param(name, ParamSpace.Types.LOGSPACE)
+
+        start = float(param["start"])
+        stop = float(param["stop"])
+        num = int(param["num"])
+
+        return np.logspace(start, stop, num)
+
     def get_linspace(self, name):
         param = self._get_param(name, ParamSpace.Types.LINSPACE)
 
@@ -205,6 +224,8 @@ class ParamSpace:
             return self.get_list(param)
         elif param_type == ParamSpace.Types.LINSPACE:
             return self.get_linspace(param)
+        elif param_type == ParamSpace.Types.LOGSPACE:
+            return self.get_logspace(param)
         elif param_type == ParamSpace.Types.RANDOM:
             return self.get_random(param)
         elif param_type == ParamSpace.Types.RANDINT:

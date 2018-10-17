@@ -10,7 +10,7 @@ class MyTestCase(unittest.TestCase):
         ps = ParamSpace()
         ps.add_value("p1", True)
         ps.add_list("p2", ["A", "B"])
-        ps.add_random("p3", 0, 1, 3)
+        ps.add_random("p3", low=0, high=4, prior="uniform", n=3)
         print("param space size ", ps.grid_size)
 
         grid = ps.param_grid()
@@ -31,14 +31,12 @@ class MyTestCase(unittest.TestCase):
         ps = ParamSpace()
         ps.add_value("p1", True)
         ps.add_list("p2", ["A", "B"])
-        ps.add_random("p3", 0, 1, 3, persist=False)
+        ps.add_random("p3", low=0, high=4, prior="uniform", n=3)
 
         param_filename = "test.conf"
         ps.write(param_filename)
         self.assertTrue(os.path.exists(param_filename))
-
-        ParamSpace.from_file(param_filename)
-
+        ParamSpace(param_filename)
         os.remove(param_filename)
 
     def test_write_summary(self):
@@ -47,7 +45,7 @@ class MyTestCase(unittest.TestCase):
         ps = ParamSpace()
         ps.add_value("p1", True)
         ps.add_list("p2", ["A", "B"])
-        ps.add_random("p3", 0, 1, 3)
+        ps.add_random("p3", low=0, high=4, prior="uniform", n=3)
         print("param space size ", ps.grid_size)
 
         ps.write_grid_summary(summary_file)
@@ -72,42 +70,93 @@ class MyTestCase(unittest.TestCase):
         or randomly generated parameters
         """
         ps = ParamSpace()
-        ps.add_random("rand", 0, 1, 1, persist=False)
+        name = "param1"
+        ps.add_random(name, low=2, high=4, persist=False, n=10, prior="uniform")
 
         params1 = ps.param_grid()
         self.assertTrue(ps.grid_size, 1)
-        r1 = next(params1)["rand"]
+        r1 = next(params1)[name]
 
         params2 = ps.param_grid()
-        r2 = next(params2)["rand"]
+        r2 = next(params2)[name]
+
+        ps.write("test.cfg")
 
         self.assertNotEqual(r1, r2)
+
+    def test_add_range(self):
+        filename = "test.cfg"
+        ps = ParamSpace()
+        ps.add_range("range_param", 0, 10, 1, dtype=int)
+
+        ps.write(filename)
+
+        ps = ParamSpace(filename)
+        #print(ps.params["range_param"])
+        #print(ps.get_range("range_param"))
+
+        os.remove(filename)
+
+    def test_domain(self):
+        ps = ParamSpace()
+        ps.add_value("value", True)
+        domain = ps.domain("value")
+        self.assertIn("domain", domain)
+        self.assertIn("dtype", domain)
+        self.assertEqual("cat", domain["dtype"])
+
+        ps.add_list("bool", [True, False, True])
+        domain = ps.domain("bool")
+        self.assertIn("domain", domain)
+        self.assertIn("dtype", domain)
+        self.assertEqual("cat", domain["dtype"])
+        self.assertListEqual([True, False], domain["domain"])
+
+        ps.add_range("bounds", 0, 10,dtype=float)
+        domain = ps.domain("bounds")
+        self.assertIn("domain", domain)
+        self.assertIn("dtype", domain)
+        self.assertIn("prior", domain)
+        self.assertEqual("float", domain["dtype"])
+        self.assertEqual("uniform", domain["prior"])
+
+        ps.add_random("random", 0, 10, prior="log-uniform", dtype=float)
+        domain = ps.domain("bounds")
+        self.assertIn("domain", domain)
+        self.assertIn("dtype", domain)
+        self.assertIn("prior", domain)
+        self.assertEqual("float", domain["dtype"])
+        self.assertEqual("uniform", domain["prior"])
 
     def test_param_grid_with_id(self):
         ps = ParamSpace()
         ps.add_value("p1", True)
         ps.add_list("p2", ["A", "B"])
 
-        params1 = ps.param_grid()
-        params1_ls = []
-        for i, param in enumerate(params1):
-            param.update({"id": i})
-            params1_ls.append(param)
+        params1 = ps.param_grid(runs=5)
 
-        params2 = ps.param_grid(include_id=True)
-        self.assertListEqual(params1_ls, list(params2))
+        self.assertEqual(len(list(params1)), 1 * 2 * 5)
 
     def test_write_grid_files(self):
         ps = ParamSpace()
         ps.add_value("p1", True)
         ps.add_list("p2", ["A", "B"])
-        ps.add_random("p3", 0, 1, 3)
+        ps.add_random("p3", n=2, prior="uniform", low=1, high=3)
         print("param space size ", ps.grid_size)
 
         out_path = "/tmp/test_params/"
         if not os.path.exists(out_path) or not os.path.isdir(out_path):
             os.makedirs(out_path)
         ps.write_config_files(out_path)
+
+    def test_sample_params(self):
+        ps = ParamSpace()
+        ps.add_value("p1", True)
+        ps.add_list("p2", ["A", "B"])
+        ps.add_random("p3", n=1, prior="uniform", low=1, high=3)
+
+        x = ps.sample_space()
+        self.assertIsInstance(x, dict)
 
 
 if __name__ == '__main__':

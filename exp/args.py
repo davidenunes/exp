@@ -1,5 +1,6 @@
-# Provides a very simple dictionary with default values and type conversion
-# did not include validation of options
+""" Dictionary with default values and type conversion
+
+"""
 from collections import namedtuple
 
 

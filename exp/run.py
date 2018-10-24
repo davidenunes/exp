@@ -72,7 +72,7 @@ def gpu_run(runnable, params, name="exp", ngpus=1, cancel=True, repeat_cfg=None,
             sys.exit(1)
 
         ps = ParamSpace(filename=params)
-        ps.write_grid_summary(name + '_params.csv')
+        ps.write_configs(name + '_params.csv')
 
         param_grid = ps.param_grid(include_id=True, id_param="id", nruns=True, runs=nruns)
 

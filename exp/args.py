@@ -1,10 +1,19 @@
-""" Dictionary with default values and type conversion
+""" Simple parameter Dictionary with default values,
+    option constraints, and type conversion
 
 """
 from collections import namedtuple
 
 
 class Param(namedtuple('Param', ["typefn", "value", "options"])):
+    """ Simple class representing parameters
+
+    with values, validated/restricted by options
+    and be converted from other values using a type function
+    used to read parameter tuples that serve as entries to :obj:`ParamDict`
+
+    """
+
     def __new__(cls, typefn, value=None, options=None):
         if options is not None:
             options = set(options)
@@ -38,8 +47,14 @@ class Namespace(object):
 
 
 class ParamDict(dict):
+    """ Dictionary of parameters with default values
+
+    Attributes:
+        defaults = a dictionary :py:`str` -> :obj:`Param`
+
+    """
+
     def __init__(self, defaults):
-        # key -> (typefn,value) e.g. "a": (int,2)
         self.defaults = dict()
         self.add_params(defaults)
 
@@ -63,6 +78,12 @@ class ParamDict(dict):
         dict.__setitem__(self, key, val)
 
     def add_params(self, param_dict):
+        """ Adds a set of parameter values from a given dictionary to the current values
+        overwrites the default values for the parameters that already exist in the defaults
+
+        Args:
+            param_dict: a dictionary with param_name -> (type,vale,options) :obj:`Param`
+        """
         for arg in param_dict:
             param = Param(*param_dict[arg])
             self.defaults[arg] = param
@@ -72,10 +93,26 @@ class ParamDict(dict):
             self.__setitem__(arg, args[arg])
 
     def to_namespace(self):
+        """ Converts the ParamDict to a :obj:`Namespace` object
+        which allows you to access ``namespace.param1``
+
+        Returns:
+            a :obj:`Namespace` object with the current values of this parameter dictionary
+        """
         return Namespace(self)
 
 
 def as_bool(v):
+    """ Converts a given value to a boolean
+
+    Args:
+        v (int,str,bool): and integer, string, or boolean to be converted to boolean value.
+    Returns:
+        (bool): if the value is an int any value <= 0 returns False, else True
+                if the value is a boolean simply forwards this value
+                if the value is a string, ignores case and converts any (yes,true,t,y,1) to True
+                and ('no', 'false', 'f', 'n', '0') to False
+    """
     if v is None:
         return False
     elif isinstance(v, bool):
@@ -95,13 +132,35 @@ def as_bool(v):
 
 
 def as_int(v):
+    """ Converts a value to int by converting it first to float
+
+    because calling ``int("2.3")`` raises a ValueError since 2.3 is
+    not an integer. ``as_int("2.3")`` returns the same as ``int(2.3)``
+
+    Args:
+        v: a value convertible to numerical
+
+    Returns:
+        (int) the integer value of the given value
+
+    """
     return int(float(v))
 
 
-def convert_type(typeclass):
-    if typeclass == bool:
+def convert_type(type_class):
+    """ Maps classes to convert functions present in this module
+    Args:
+        type_class: some class that can also be called to convert values into its types
+
+
+    Returns:
+        a type conversion function for the given class capable of converting more than literal values, for instance,
+        requesting a type conversion class for boolean, returns a function capable of converting strings, or integers
+        to a boolean value (see :obj:`as_bool`)
+    """
+    if type_class == bool:
         return as_bool
-    elif typeclass == int:
+    elif type_class == int:
         return as_int
     else:
-        return typeclass
+        return type_class

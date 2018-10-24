@@ -1,5 +1,5 @@
 import unittest
-from exp.params import ParamSpace
+from exp.params import ParamSpace, Types, DTypes
 
 import csv
 import os
@@ -11,12 +11,12 @@ class MyTestCase(unittest.TestCase):
         ps.add_value("p1", True)
         ps.add_list("p2", ["A", "B"])
         ps.add_random("p3", low=0, high=4, prior="uniform", n=3)
-        print("param space size ", ps.grid_size)
+        # print("param space size ", ps.grid_size)
 
         grid = ps.param_grid()
 
-        for params in grid:
-            print(params)
+        # for params in grid:
+        #    print(params)
 
         grid = ps.param_grid()
         grid = list(grid)
@@ -24,7 +24,7 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual(len(grid), ps.grid_size)
 
     def test_write_recover(self):
-        """ There is one issue with writing the param files which is the fact that these do not preserve the
+        """ There is one issue with writing the param assets which is the fact that these do not preserve the
         value types, this is expected, the only issue was that we need to ensure that we can use np.random.uniform
         so regardless of the add_random and add_range arg types, they will be converted to float parameters
         """
@@ -46,17 +46,17 @@ class MyTestCase(unittest.TestCase):
         ps.add_value("p1", True)
         ps.add_list("p2", ["A", "B"])
         ps.add_random("p3", low=0, high=4, prior="uniform", n=3)
-        print("param space size ", ps.grid_size)
+        # print("param space size ", ps.grid_size)
 
-        ps.write_grid_summary(summary_file)
+        ps.write_configs(summary_file)
 
         written_summary = open(summary_file)
         reader = csv.DictReader(written_summary)
 
         params = [dict(config) for config in reader]
-        print("read parameters")
-        for config in params:
-            print(config)
+        # print("read parameters")
+        # for config in params:
+        #    print(config)
 
         written_summary.close()
         os.remove(summary_file)
@@ -92,8 +92,8 @@ class MyTestCase(unittest.TestCase):
         ps.write(filename)
 
         ps = ParamSpace(filename)
-        #print(ps.params["range_param"])
-        #print(ps.get_range("range_param"))
+        # print(ps.params["range_param"])
+        # print(ps.get_range("range_param"))
 
         os.remove(filename)
 
@@ -103,16 +103,16 @@ class MyTestCase(unittest.TestCase):
         domain = ps.domain("value")
         self.assertIn("domain", domain)
         self.assertIn("dtype", domain)
-        self.assertEqual("cat", domain["dtype"])
+        self.assertEqual(DTypes.CATEGORICAL.value, domain["dtype"])
 
         ps.add_list("bool", [True, False, True])
         domain = ps.domain("bool")
         self.assertIn("domain", domain)
         self.assertIn("dtype", domain)
-        self.assertEqual("cat", domain["dtype"])
+        self.assertEqual(DTypes.CATEGORICAL.value, domain["dtype"])
         self.assertListEqual([True, False], domain["domain"])
 
-        ps.add_range("bounds", 0, 10,dtype=float)
+        ps.add_range("bounds", 0, 10, dtype=float)
         domain = ps.domain("bounds")
         self.assertIn("domain", domain)
         self.assertIn("dtype", domain)
@@ -142,7 +142,7 @@ class MyTestCase(unittest.TestCase):
         ps.add_value("p1", True)
         ps.add_list("p2", ["A", "B"])
         ps.add_random("p3", n=2, prior="uniform", low=1, high=3)
-        print("param space size ", ps.grid_size)
+        # print("param space size ", ps.grid_size)
 
         out_path = "/tmp/test_params/"
         if not os.path.exists(out_path) or not os.path.isdir(out_path):

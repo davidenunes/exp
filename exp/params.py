@@ -1,49 +1,86 @@
+""" Parameter Space definition writing and loading
+
+    :obj:`ParamSpace` uses TOML as the underlying format to write and load
+    configurations to and from
+"""
 import math
-import configobj as cfg
 import toml
 import itertools
 import numpy as np
 import csv
-import scipy.stats as stats
 import os
+from enum import Enum
 
 
 def _repeat_it(iterable, n):
     return itertools.chain.from_iterable(itertools.repeat(x, n) for x in iterable)
 
 
+class Types(Enum):
+    """ Enum with valid parameter types supported by :obj:`ParamSpace`
+
+    """
+    VALUE = "value"
+    LIST = "list"
+    RANGE = "range"
+    RANDOM = "random"
+
+    @staticmethod
+    def from_str(value, case_sensitive=False):
+        if not case_sensitive:
+            value.lower()
+        if value == Types.VALUE.value:
+            return Types.VALUE
+        elif value == Types.LIST.value:
+            return Types.LIST
+        elif value == Types.RANGE.value:
+            return Types.RANGE
+        elif value == Types.RANDOM.value:
+            return Types.RANDOM
+        else:
+            raise ValueError("invalid parameter type: {}\n"
+                             "supported values: {}".format(value,
+                                                           ",".join([t.name for t in Types])))
+
+
+class DTypes(Enum):
+    """ Enum with valid parameter dtypes supported by :obj:`ParamSpace`
+
+        Useful to convert parameter spaces into scikit-optimization Dimensions
+    """
+    INT = "int"
+    FLOAT = "float"
+    CATEGORICAL = "categorical"
+
+    @staticmethod
+    def from_type(dtype, case_sensitive=False):
+        if not case_sensitive and isinstance(dtype, str):
+            dtype.lower()
+
+        if dtype in (DTypes.FLOAT.value, float):
+            return DTypes.FLOAT
+        elif dtype in (DTypes.INT.value, int):
+            return DTypes.INT
+        elif dtype == DTypes.CATEGORICAL.value:
+            return DTypes.CATEGORICAL
+        else:
+            raise ValueError("invalid parameter dtype: {}\n"
+                             "supported values: {}".format(dtype,
+                                                           ",".join([t.name for t in DTypes])))
+
+
 class ParamSpace:
-    """ ParamSpace - parameter spaces from configuration files
+    """ ParamSpace
+
+    Create parameter spaces from configuration files.
 
     ParamSpace creates and read from parameter configuration files
     to create parameter spaces used for hyperparameter grid search
-    or to configure a series of experiments.
+    (:py:mod:`exp.run`) or Global optimization procedures (:py:mod:`exp.gopt`)
 
     Args:
-        filename (str) [optional] path to a configuration file.
-        If specified creates a parameter space from a configuration file, otherwise the
-        ParamSpace starts empty.
-
+        filename (str): [optional] path to a configuration file. If not specified, creates an empty ParamSpace.
     """
-
-    class types:
-        VALUE = "value"
-        LIST = "list"
-        RANGE = "range"
-        RANDOM = "random"
-
-    class dtypes:
-        INT = "int"
-        FLOAT = "float"
-        CATEGORICAL = "cat"
-
-        def from_type(self, dtype):
-            if dtype in ("float", float):
-                return self.FLOAT
-            elif dtype in ("int", int):
-                return self.INT
-            else:
-                return self.CATEGORICAL
 
     def __init__(self, filename=None):
         if filename is not None:
@@ -67,9 +104,10 @@ class ParamSpace:
             return 0
 
         for param in params:
-            param_type = self.params[param]["type"]
+            param_type = Types.from_str(self.params[param]["type"])
             param_value = self.get_param(param, param_type)
-            if param_type == ParamSpace.types.VALUE:
+
+            if param_type == Types.VALUE:
                 param_value = [param_value]
             size *= len(param_value)
         return size
@@ -101,7 +139,7 @@ class ParamSpace:
 
         Args:
             name: name of the parameter to be returned
-            param_type: (ParamSpace.Type) parameter type
+            param_type: (Type) parameter type
 
         Raises:
             LookupError: if parameter is not found in parameter space
@@ -115,10 +153,11 @@ class ParamSpace:
             raise LookupError("Parameter not found: {}".format(name))
 
         param = self.params[name]
-        if param["type"] != param_type:
+        actual_type = Types.from_str(param['type'])
+        if actual_type != param_type:
             raise TypeError("expected {param} to be a {expected} but got {actual}".format(param=name,
                                                                                           expected=param_type,
-                                                                                          actual=param["type"]))
+                                                                                          actual=actual_type))
 
         return param
 
@@ -142,7 +181,7 @@ class ParamSpace:
                 """\n Unknown dtype "{}", valid dtypes are:\n \t-float, \n \t-int """.format(dtype))
 
         param = self.params[name] = {}
-        param["type"] = ParamSpace.types.RANDOM
+        param["type"] = Types.RANDOM.value
         param["dtype"] = dtype.__name__
         if n:
             param["n"] = n
@@ -174,7 +213,7 @@ class ParamSpace:
             are found uniform is used
 
         """
-        param: dict = self._get_param(name, ParamSpace.types.RANDOM)
+        param: dict = self._get_param(name, Types.RANDOM)
         n = param.get("n", 1)
         bounds = param.get("bounds", [0, 1])
         prior = param.get("prior", "uniform")
@@ -205,7 +244,7 @@ class ParamSpace:
             value: value to be attributed to param
         """
         param = self.params[name] = {}
-        param["type"] = ParamSpace.types.VALUE
+        param["type"] = Types.VALUE.value
         param["value"] = value
         self._update_grid_size(1)
 
@@ -219,7 +258,7 @@ class ParamSpace:
             obj some value for the single value parameter
 
         """
-        param = self._get_param(name, ParamSpace.types.VALUE)
+        param = self._get_param(name, Types.VALUE)
         return param["value"]
 
     def add_list(self, name, values):
@@ -231,7 +270,7 @@ class ParamSpace:
         """
         values = list(values)
         param = self.params[name] = {}
-        param["type"] = ParamSpace.types.LIST
+        param["type"] = Types.LIST.value
         param["value"] = values
         self._update_grid_size(len(values))
 
@@ -246,7 +285,7 @@ class ParamSpace:
             dtype: float or int if int the points in the range are rounded
         """
         param = self.params[name] = {}
-        param["type"] = ParamSpace.types.RANGE
+        param["type"] = Types.RANGE.value
         param["bounds"] = [low, high]
         param["step"] = step
         param["dtype"] = dtype.__name__
@@ -263,15 +302,14 @@ class ParamSpace:
         Returns:
             an array with n numbers according to the range specification
         """
-        param = self._get_param(name, ParamSpace.types.RANGE)
+        param = self._get_param(name, Types.RANGE)
         if "bounds" not in param:
             raise LookupError(""" "bounds" not found for parameter {}""".format(name))
         low = float(param["bounds"][0])
         # high = float(param["bounds"]["high"])
         high = float(param["bounds"][1])
-        if "step" not in param:
-            raise LookupError(""" "step" not found for parameter {}""".format(name))
-        step = float(param["step"])
+
+        step = float(param.get("step", 1.0))
         if "dtype" not in param:
             dtype = float
         else:
@@ -292,7 +330,7 @@ class ParamSpace:
             a list with the parameter values
 
         """
-        param = self._get_param(name, ParamSpace.types.LIST)
+        param = self._get_param(name, Types.LIST)
 
         # return list of unique items
         value = param["value"]
@@ -308,19 +346,18 @@ class ParamSpace:
 
         if "type" not in self.params[param]:
             raise ValueError("Parameter found but not specified properly: missing \"type\" property")
-        actual_type = self.params[param]["type"]
-        actual_type = actual_type.lower()
+        actual_type = Types.from_str(self.params[param]["type"])
 
         if type is not None and actual_type != type:
             raise ValueError("Parameter {p} has type {ta}, you requested {t}".format(p=param, ta=actual_type, t=type))
 
-        if actual_type == ParamSpace.types.RANGE:
+        if actual_type == Types.RANGE:
             return self.get_range(param)
-        elif actual_type == ParamSpace.types.VALUE:
+        elif actual_type == Types.VALUE:
             return self.get_value(param)
-        elif actual_type == ParamSpace.types.LIST:
+        elif actual_type == Types.LIST:
             return self.get_list(param)
-        elif actual_type == ParamSpace.types.RANDOM:
+        elif actual_type == Types.RANDOM:
             return self.get_random(param)
         else:
             raise TypeError("Unknown Parameter Type")
@@ -328,30 +365,30 @@ class ParamSpace:
     def domain(self, param_name):
 
         param = self.params[param_name]
-        param_type = param["type"]
+        param_type = Types.from_str(param["type"])
         prior = param.get("prior", None)
 
-        if param_type == ParamSpace.types.LIST:
+        if param_type == Types.LIST:
             return {"domain": self.get_list(param_name, unique=True),
-                    "dtype": ParamSpace.dtypes.CATEGORICAL}
+                    "dtype": DTypes.CATEGORICAL.value}
 
-        elif param_type == ParamSpace.types.RANDOM:
+        elif param_type == Types.RANDOM:
             bounds = param.get("bounds", [0., 1.])
-            dtype = param.get("dtype", ParamSpace.dtypes.FLOAT)
+            dtype = param.get("dtype", DTypes.FLOAT.value)
 
             if prior is None:
                 prior = "uniform"
             return {"domain": bounds, "dtype": dtype, "prior": prior}
 
-        elif param_type == ParamSpace.types.RANGE:
-            dtype = param.get("dtype", ParamSpace.dtypes.FLOAT)
+        elif param_type == Types.RANGE:
+            dtype = param.get("dtype", DTypes.FLOAT.value)
             bounds = param.get("bounds", [0., 1.])
             if prior is None:
                 prior = "uniform"
             return {"domain": bounds, "dtype": dtype, "prior": prior}
 
         else:
-            dtype = param.get("dtype", ParamSpace.dtypes.CATEGORICAL)
+            dtype = param.get("dtype", DTypes.CATEGORICAL.value)
             bounds = [self.get_param(param_name)]
             return {"domain": bounds, "dtype": dtype}
 
@@ -371,14 +408,14 @@ class ParamSpace:
         """
         if name in self.params:
             param = self.params[name]
-            param_type = param["type"]
+            param_type = Types.from_str(param["type"])
             value = self.get_param(name, param_type)
-            if param_type == ParamSpace.types.VALUE:
+            if param_type == Types.VALUE:
                 return value
-            elif param_type in (ParamSpace.types.LIST, ParamSpace.types.RANGE):
+            elif param_type in (Types.LIST, Types.RANGE):
                 randi = np.random.randint(0, len(value))
                 return value[randi]
-            elif param_type == ParamSpace.types.RANDOM:
+            elif param_type == Types.RANDOM:
                 return value[0]
         else:
             raise KeyError("{} not in parameter space".format(name))
@@ -410,8 +447,9 @@ class ParamSpace:
 
         for param in self.params.keys():
             param_type = self.params[param]["type"]
+            param_type = Types.from_str(param_type)
             param_value = self.get_param(param, param_type)
-            if param_type == ParamSpace.types.VALUE:
+            if param_type == Types.VALUE:
                 param_value = [param_value]
             param_values.append(param_value)
 
@@ -439,11 +477,10 @@ class ParamSpace:
         with open(filename, "w") as f:
             toml.dump(self.params, f)
 
-    def write_grid_summary(self, output_path="params.csv"):
+    def write_configs(self, output_path="params.csv"):
         """ Writes a csv file with each line containing a configuration value with a unique id for each configuration
 
             Args:
-                conf_id_header: the header the be displayed on the summary file with the configuration id
                 output_path: the output path for the summary file
         """
         summary_header = ["id", "run"]
@@ -454,23 +491,14 @@ class ParamSpace:
             writer.writeheader()
 
             param_grid = self.param_grid()
-            # conf_id = 0
             for param_row in param_grid:
-                ## add id to the current row
-                # param_row["id"] = conf_id
-                # conf_id += 1
                 writer.writerow(param_row)
 
     def write_config_files(self, output_path="params", file_prefix="params"):
-        """
-
+        """ Writes one configuration file per unique configuration in the grid space
         Args:
             output_path:
             file_prefix:
-            conf_id_header:
-
-        Returns:
-
         """
         param_grid = self.param_grid()
         conf_id = 0

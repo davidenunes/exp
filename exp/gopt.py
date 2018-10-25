@@ -1,41 +1,28 @@
-""" CLI for Hyper parameter optimisation with SMAC
+""" CLI for Hyper parameter optimisation
 
-prompt_toolkit to build a obtimizer REPL
-can also be used to build configurations
-from base configuration assets
+prompt_toolkit run sequential model algorithmic optimisation
+based on gaussian processes, random forests etc.
 """
 import sys
-from exp.params import ParamSpace
-import multiprocessing as mp
+
 import GPUtil
-import csv
-from tqdm import tqdm
-from tqdm._utils import _term_move_up
-from matplotlib import pyplot as plt
-import importlib
-from multiprocessing import Event
 import click
-import os
+import csv
+import importlib
 import logging
+import multiprocessing as mp
+import os
+from matplotlib import pyplot as plt
+from multiprocessing import Event
 from multiprocessing import Queue, Process
 from multiprocessing.queues import Empty
 from skopt import Optimizer, plots
 from skopt.space import Integer, Real, Categorical
+from tqdm import tqdm
+from tqdm._utils import _term_move_up
+import traceback
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(threadName)10s %(name)18s: %(message)s',
-    stream=sys.stderr,
-)
-logging.basicConfig(
-    level=logging.ERROR,
-    format='%(threadName)10s %(name)18s: %(message)s',
-    stream=sys.stderr,
-)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
-
-CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+from exp.params import ParamSpace, DTypes
 
 
 def params_to_skopt(param_space: ParamSpace):
@@ -61,17 +48,18 @@ def params_to_skopt(param_space: ParamSpace):
     for param_name in param_space.param_names():
         domain_param = param_space.domain(param_name)
         domain = domain_param["domain"]
+        dtype = DTypes.from_type(domain_param["dtype"])
         if len(domain) > 1:
-            if domain_param["dtype"] == ParamSpace.DTypes.INT:
+            if dtype == DTypes.INT:
                 low = min(domain)
                 high = max(domain)
                 dimensions.append(Integer(low, high, name=param_name))
-            elif domain_param["dtype"] == ParamSpace.DTypes.FLOAT:
+            elif dtype == DTypes.FLOAT:
                 low = min(domain)
                 high = max(domain)
                 prior = domain_param.get("prior", None)
                 dimensions.append(Real(low, high, prior=prior, name=param_name))
-            elif domain_param["dtype"] == ParamSpace.DTypes.CATEGORICAL:
+            elif dtype == DTypes.CATEGORICAL:
                 prior = domain_param.get("prior", None)
                 dimensions.append(Categorical(domain, prior, transform="onehot", name=param_name))
     return dimensions
@@ -105,10 +93,10 @@ def values_to_params(param_values, param_space):
     return cfg
 
 
-def load_model(runnable_path):
-    """ Loads a python file with the model to be evaluated.
+def load_module(runnable_path):
+    """ Loads a python file with the module to be evaluated.
 
-    A model is just a python file with a run function. Each worker then
+    The module is a python file with a run function member. Each worker then
     passes each configuration it receives from a Queue to run as keyword arguments
 
     Args:
@@ -158,42 +146,45 @@ def submit(n, optimizer: Optimizer, opt_param_names, current_configs, param_spac
 
 
 def worker(id: int,
-           runnable_path: str,
+           module_path: str,
            config_queue: Queue,
            result_queue: Queue,
+           error_queue: Queue,
            terminated: Event):
     """ Worker to be executed in its own process
 
     Args:
-        runnable_path: path to model runnable that must be imported and runned on a given configuration
+        module_path: path to model runnable that must be imported and runned on a given configuration
         terminated: each worker should have its own flag
         id: (int) with worker id
         config_queue: configuration queue used to receive the parameters for this worker, each configuration is a task
         result_queue: queue where the worker deposits the results
 
     Returns:
-        each time a new result is returned from calling the run function on the model, the worker puts this in to its
+        each time a new result is returned from calling the run function on the module, the worker puts this in to its
         result multiprocessing Queue in the form (worker_id, configuration_id, result)
 
         If an exception occurs during run(...) the worker puts that exception as the result into the queue instead
 
     """
     # ids should be 0, 1, 2, n where n is the maximum number of gpus available
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
     os.environ["CUDA_VISIBLE_DEVICES"] = str(id)
-    model = load_model(runnable_path)
+    module = load_module(module_path)
 
     while not terminated.is_set():
         try:
             kwargs = config_queue.get(timeout=0.5)
             cfg_id = kwargs["id"]
             # e.g. model score
-            result = model.run(**kwargs)
+            result = module.run(**kwargs)
             result_queue.put((id, cfg_id, result))
         except Empty:
             # nothing to do, check if it's time to terminate
             pass
         except Exception as e:
             terminated.set()
+            error_queue.put((id, cfg_id, traceback.format_exc()))
             result_queue.put((id, cfg_id, e))
 
 
@@ -212,15 +203,19 @@ def update_progress_kuma(progress):
     tqdm.write(offset + ' / 　    づ')
 
 
-@click.command(help='optimizes the hyperparameters for a given model', context_settings=CONTEXT_SETTINGS)
+@click.command(help='optimizes the hyperparameters for a given function',
+               context_settings=dict(help_option_names=['-h', '--help'])
+               )
 @click.option('-p', '--params', required=True, type=click.Path(exists=True), help='path to parameter space file')
-@click.option('-m', '--model', required=True, type=click.Path(exists=True), help='path to python module file')
+@click.option('-m', '--module', required=True, type=click.Path(exists=True), help='path to python module file')
 @click.option('-w', '--workers', default=1, type=int, help="number of workers: limited to CPU core count or GPU "
                                                            "count, cannot be <=0.")
 @click.option('-g', '--gpu', is_flag=True,
               help="bounds the number of workers to the number of available GPUs (not under load)."
                    "Each process only sees a single GPU.")
-@click.option('-r', '--runs', default=1, type=int, help='number of runs the optimizer will run')
+@click.option('-n', '--n', default=1, type=int, help='number of configuration runs')
+@click.option('--name', default="opt", type=str,
+              help='optimization experiment name: used as prefix for some output files')
 @click.option('-s', '--surrogate', default="GP",
               type=click.Choice(["GP", "RF", "ET"], case_sensitive=False),
               help='surrogate model for global optimisation: '
@@ -237,7 +232,7 @@ def update_progress_kuma(progress):
                                            'the current working dir')
 @click.option('--logfile', is_flag=True, help="if set outputs a log file with errors that might occur in the working "
                                               "processes.")
-@click.option('-o', '--out', type=click.Path(), help="output file or directory for the results file. If plotting "
+@click.option('-o', '--out', type=click.Path(), help="output directory for the results file. If plotting "
                                                      "convergence, the plot is also saved in the first directory in the"
                                                      "path.")
 @click.option('--sync/--async', default=False, help="--async (default) submission, means that we submit a new "
@@ -245,22 +240,21 @@ def update_progress_kuma(progress):
                                                     "--sync mode makes the optimizer wait for all workers before "
                                                     "submitting new configurations to all of them")
 @click.option('--kuma', is_flag=True, help='kuma-san will display the progress on your global optimization procedure')
-def run(params, model, workers, gpu, runs, surrogate, acquisition, plot, logfile, out, sync, kuma):
-    if logfile:
-        handler = logging.FileHandler('{name}.log'.format(name="opt_run"))
-        handler.setLevel(logging.INFO)
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
+def run(params, module, workers, gpu, n, surrogate, acquisition, name, plot, logfile, out, sync, kuma):
+    logger = logging.getLogger(__name__)
+    handler = logging.FileHandler('{name}.log'.format(name=name), delay=True)
+    handler.setLevel(logging.ERROR)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
 
     try:
         if gpu:
             # detecting available gpus with load < 0.1
             gpu_ids = [g.id for g in GPUtil.getGPUs() if g.load < 0.2]
             num_workers = min(workers, len(gpu_ids))
-            logger.log(logging.DEBUG, "{} GPUs detected".format(num_workers))
 
             if num_workers <= 0:
-                logger.log(logging.ERROR, "no gpus available")
                 sys.exit(1)
         else:
             num_workers = min(workers, mp.cpu_count())
@@ -271,7 +265,7 @@ def run(params, model, workers, gpu, runs, surrogate, acquisition, plot, logfile
                 sys.exit(1)
 
         # prepare output file
-        out_file_name = "exp_opt.csv"
+        out_file_name = '{}_configurations.csv'.format(name)
         out = out_file_name if out is None else out
         if out is not None and os.path.isdir(out):
             out_file_path = os.path.join(out, out_file_name)
@@ -279,8 +273,9 @@ def run(params, model, workers, gpu, runs, surrogate, acquisition, plot, logfile
             out_file_path = out
 
         out_dir = os.path.abspath(os.path.join(out_file_path, os.pardir))
+        out_file_path = os.path.join(out_dir, out_file_name)
 
-        progress_bar = tqdm(total=runs, leave=True)
+        progress_bar = tqdm(total=n, leave=True)
         param_space = ParamSpace(params)
         dimensions = params_to_skopt(param_space)
         optimizer_dims = [d.name for d in dimensions]
@@ -297,10 +292,12 @@ def run(params, model, workers, gpu, runs, surrogate, acquisition, plot, logfile
         # manager = mp.Manager()
         config_queue = Queue()
         result_queue = Queue()
+        error_queue = Queue()
 
         terminate_flags = [Event() for _ in range(num_workers)]
-        processes = [Process(target=worker, args=(i, model, config_queue, result_queue, terminate_flags[i]))
-                     for i in range(num_workers)]
+        processes = [
+            Process(target=worker, args=(i, module, config_queue, result_queue, error_queue, terminate_flags[i]))
+            for i in range(num_workers)]
 
         configs = []
         scores = {}
@@ -324,7 +321,7 @@ def run(params, model, workers, gpu, runs, surrogate, acquisition, plot, logfile
         if kuma:
             update_progress_kuma(progress_bar)
 
-        while num_completed < runs and not cancel:
+        while num_completed < n and not cancel:
             try:
                 res = result_queue.get(timeout=1)
                 pid, cfg_id, result = res
@@ -349,8 +346,8 @@ def run(params, model, workers, gpu, runs, surrogate, acquisition, plot, logfile
 
                     # sync submission of jobs means we wait for all workers to finish
                     if sync and pending == 0:
-                        if num_completed != runs:
-                            num_submit = min(num_workers, runs - num_completed)
+                        if num_completed != n:
+                            num_submit = min(num_workers, n - num_completed)
                             submit(num_submit, optimizer, optimizer_dims, configs, param_space, config_queue)
                             pending = num_submit
                         else:
@@ -358,7 +355,7 @@ def run(params, model, workers, gpu, runs, surrogate, acquisition, plot, logfile
 
                     # async submission of jobs: as soon as we receive one result we submit the next
                     if not sync:
-                        if (num_completed + pending) != runs:
+                        if (num_completed + pending) != n:
                             submit(1, optimizer, optimizer_dims, configs, param_space, config_queue)
                             pending += 1
                         else:
@@ -371,8 +368,11 @@ def run(params, model, workers, gpu, runs, surrogate, acquisition, plot, logfile
                     if kuma:
                         update_progress_kuma(progress_bar)
 
-
                 else:
+                    _, cfg_id_err, err = error_queue.get()
+                    logger.error("configuration {} failed".format(cfg_id_err))
+                    logger.error(err)
+
                     cancel = True
             except Empty:
                 pass
@@ -384,7 +384,7 @@ def run(params, model, workers, gpu, runs, surrogate, acquisition, plot, logfile
             if process.is_alive():
                 process.terminate()
     except Exception as e:
-        logger.log(logging.ERROR, e)
+        logger.log(logging.ERROR, traceback.format_exc())
         raise e
     except KeyboardInterrupt:
         pass
@@ -394,7 +394,7 @@ def run(params, model, workers, gpu, runs, surrogate, acquisition, plot, logfile
 
         # debugging
         if opt_results is not None and plot:
-            plt_file = 'convergence.pdf'
+            plt_file = '{}_convergence.pdf'.format(name)
             out_path = os.path.join(out_dir, plt_file)
             plt.savefig(out_path, bbox_inches='tight')
 

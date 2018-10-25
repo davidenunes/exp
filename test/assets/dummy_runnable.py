@@ -3,8 +3,7 @@ import random
 
 
 def run(x=1, **kwargs):
-    try:
-        time.sleep(random.uniform(0, 2))
-        return x ** 2
-    except:
-        pass
+    time.sleep(random.uniform(0, 0.5))
+    if x == 3:
+        raise ValueError("oops!!")
+    return x ** 2

@@ -1,23 +1,25 @@
 import sys
 import os
 import tensorflow as tf
-import random
-from exp.args import ParamDict
+from exp.args import ParamDict,Namespace
 
 defaults = {
+    'x': (float, None),
     'id': (int, 0),
     'run': (int, 1)
 }
 
-args = ParamDict(defaults)
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
 
 def run(**kargs):
+    args = ParamDict(defaults)
     args.from_dict(kargs)
+    ns = args.to_namespace()
+    #args = Namespace(args)
     # print(dargs)
 
     gpu = os.environ["CUDA_VISIBLE_DEVICES"]
-    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-
     # test exceptions
     # if random.random() < 0.3:
     #   raise Exception("failled with params: \n{}".format(kargs))
@@ -25,10 +27,13 @@ def run(**kargs):
     a = tf.random_uniform([100000, 3])
     b = tf.constant([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], shape=[3, 2], name='b')
     c = tf.matmul(a, b)
+    d = tf.multiply(c, ns.x)
+    #d = tf.matmul(c, ns.x)
 
-    cfg = tf.ConfigProto(log_device_placement=True)
-    sess = tf.Session(config=cfg)
-    res = sess.run(c)
+    # cfg = tf.ConfigProto(log_device_placement=True)
+    # sess = tf.Session(config=cfg)
+    sess = tf.Session()
+    res = sess.run(d)
     sess.close()
 
     debug = "INSIDE GPU WORKER ---------------\n" \
@@ -37,6 +42,7 @@ def run(**kargs):
             "result: \n {res}" \
             "-----------------------------------".format(params=args, env=gpu, res=res)
 
+    tf.reset_default_graph()
     return debug
 
 

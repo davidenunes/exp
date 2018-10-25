@@ -1,172 +1,240 @@
 import sys
 
-import os
-from exp.params import ParamSpace
-import argparse
-import multiprocessing as mp
-import GPUtil as gpu
-from tqdm import tqdm
+import GPUtil
+
 import importlib
 import logging
+import multiprocessing as mp
+import os
 import traceback
-
-from functools import partial
-
-
-def init_gpu_worker(queue):
-    global gpu_id
-    gpu_id = queue.get()
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
+import click
+from tqdm import tqdm
+from multiprocessing import Queue, Event, Process
+from multiprocessing.queues import Empty as QueueEmpty
+from exp.params import ParamSpace
 
 
-def gpu_worker(runnable_path, kwargs):
-    global gpu_id
+def load_module(runnable_path):
+    """ Loads a python file with the module to be evaluated.
+
+    The module is a python file with a run function member. Each worker then
+    passes each configuration it receives from a Queue to run as keyword arguments
+
+    Args:
+        runnable_path:
+
+    Raises:
+        TypeError: if the loaded module doesn't have a run function
+
+    Returns:
+        a reference to the newly loaded module so
+
+    """
+    runnable_path = os.path.abspath(runnable_path)
+    spec = importlib.util.spec_from_file_location("runnable", location=runnable_path)
+    runnable = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(runnable)
 
     try:
-        runnable_path = os.path.abspath(runnable_path)
+        getattr(runnable, "run")
+    except AttributeError:
+        raise TypeError("module in {} does not contain a \"run\" method".format(runnable_path))
 
-        spec = importlib.util.spec_from_file_location("worker", location=runnable_path)
-        worker = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(worker)
-
-        return worker.run(**kwargs)
-    except Exception as e:
-        return e
+    return runnable
 
 
-def gpu_run(runnable, params, name="exp", ngpus=1, cancel=True, repeat_cfg=None, repeat_run=None, nruns=1):
+def worker(id: int,
+           module_path: str,
+           config_queue: Queue,
+           result_queue: Queue,
+           error_queue: Queue,
+           terminated: QueueEmpty,
+           cancel):
+    """ Worker to be executed in its own process
+
+    Args:
+        cancel: if true terminates when an error is encountered, otherwise keeps running
+        error_queue: used to pass formatted stack traces to the main process
+        module_path: path to model runnable that is imported. It's method run is called on a given configuration
+        terminated: each worker should have its own flag
+        id: (int) with worker id
+        config_queue: configuration queue used to receive the parameters for this worker, each configuration is a task
+        result_queue: queue where the worker deposits the results
+
+    Returns:
+        each time a new result is returned from calling the run function on the module, the worker puts this in to its
+        result multiprocessing Queue in the form (worker_id, configuration_id, result)
+
+        If an exception occurs during run(...) the worker puts that exception as the result into the queue instead
+
     """
 
-    :param runnable: path to python module with run function
-    :param params: path to parameter space file
-    :param name: name for the experiment
-    :param ngpus: number of gpus to be used in the experiment
-        (defaults to minimum between ngpus and number of gpus not being used)
-    :param cancel: if True cancels the entire experiment if one worker encounters an error
-    :param repeat_cfg: a list of configuration ids to be run from the parameter space (nruns is applied)
-    :param repeat_run: a list of run ids to be run from the parameter space
-    :param nruns: number of runs to be executed for each unique configuration in the parameter space
-    """
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(id)
+    module = load_module(module_path)
 
-    # setup logger
+    while not terminated.is_set():
+        try:
+            kwargs = config_queue.get(timeout=0.5)
+            cfg_id = kwargs["id"]
+            result = module.run(**kwargs)
+            result_queue.put((id, cfg_id, result))
+        except QueueEmpty:
+            pass
+        except Exception as e:
+            if cancel:
+                terminated.set()
+            error_queue.put((id, cfg_id, traceback.format_exc()))
+            result_queue.put((id, cfg_id, e))
+
+
+@click.command(help='runs all the configurations in a defined space')
+@click.option('-p', '--params', required=True, type=click.Path(exists=True), help='path to parameter space file')
+@click.option('-m', '--module', required=True, type=click.Path(exists=True), help='path to python module file')
+@click.option('-r', '--runs', default=1, type=int, help='number of configuration runs')
+@click.option('--name', default="exp", type=str, help='experiment name: used as prefix for some output files')
+@click.option('-w', '--workers', default=1, type=int, help="number of workers: limited to CPU core count or GPU "
+                                                           "count, cannot be <=0.")
+@click.option('-g', '--gpu', is_flag=True,
+              help="bounds the number of workers to the number of available GPUs (not under load)."
+                   "Each process only sees a single GPU.")
+@click.option('-c', '--config-ids', type=int, multiple=True)
+@click.option('--cancel', is_flag=True, help="cancel all tasks if one fails")
+def main(params, module, runs, name, workers, gpu, config_ids, cancel):
     logger = logging.getLogger(__name__)
-    handler = logging.FileHandler('{name}.log'.format(name=name))
+    handler = logging.FileHandler('{name}.log'.format(name=name), delay=True)
     handler.setLevel(logging.ERROR)
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     handler.setFormatter(formatter)
     logger.addHandler(handler)
 
-    # detecting available gpus with load < 0.1
-    gpu_ids = [g.id for g in gpu.getGPUs() if g.load < 0.2]
-    ngpus = min(ngpus, len(gpu_ids))
+    if gpu:
+        # detecting available gpus with load < 0.1
+        worker_ids = [g.id for g in GPUtil.getGPUs() if g.load < 0.2]
+        num_workers = min(workers, len(worker_ids))
 
-    if ngpus <= 0:
-        print("No gpus available", file=sys.stderr)
-        sys.exit(1)
+        if num_workers <= 0:
+            logger.log(logging.ERROR, "no gpus available")
+            sys.exit(1)
     else:
-        if not os.path.exists(params) and not os.path.isfile(params):
-            print("params file not found: {}".format(params), file=sys.stderr)
-            sys.exit(1)
-        if not os.path.exists(runnable) or not os.path.isfile(runnable):
-            print("runnable file not found: {}".format(runnable), file=sys.stderr)
+        num_workers = min(workers, mp.cpu_count())
+        if num_workers <= 0:
+            logger.log(logging.ERROR, "--workers cannot be 0")
             sys.exit(1)
 
-        ps = ParamSpace(filename=params)
-        ps.write_configs(name + '_params.csv')
+    ps = ParamSpace(filename=params)
+    ps.write_configs('{}_params.csv'.format(name))
 
-        param_grid = ps.param_grid(include_id=True, id_param="id", nruns=True, runs=nruns)
+    param_grid = ps.param_grid(runs=runs)
+    n_tasks = ps.grid_size * runs
 
-        n_tasks = ps.grid_size * nruns
+    if len(config_ids) > 0:
+        n_tasks = len(config_ids) * runs
+        param_grid = [p for p in param_grid if p["id"] in config_ids]
+        param_grid = iter(param_grid)
 
-        if repeat_cfg is not None:
-            param_grid = [p for p in param_grid if p["id"] in repeat_cfg]
-            n_tasks = len(repeat_cfg) * nruns
-        elif repeat_run is not None:
-            param_grid = [p for p in param_grid if p["run_id"] in repeat_run]
-            n_tasks = len(repeat_run)
+    num_workers = min(n_tasks, num_workers)
 
-        print("----------GPU DISPATCHER--------------------")
-        print("::  GPUs: {}/{}".format(ngpus, len(gpu_ids)))
-        print(":: tasks: {}".format(n_tasks))
-        print("--------------------------------------------")
+    print("----------Parameter Space Runner------------")
+    print(":: tasks: {}".format(n_tasks))
+    print(":: workers: {}".format(num_workers))
+    print("--------------------------------------------")
 
-        manager = mp.Manager()
-        psqueue = manager.Queue()
-        # done = mp.Event()
-        pbar = tqdm(total=n_tasks, leave=True)
+    config_queue = Queue()
+    result_queue = Queue()
+    error_queue = Queue()
+    progress_bar = tqdm(total=n_tasks, leave=True)
 
-        # load gpu ids to the queue to be read by each worker
+    terminate_flags = [Event() for _ in range(num_workers)]
+    processes = [
+        Process(target=worker, args=(i, module, config_queue, result_queue, error_queue, terminate_flags[i], cancel))
+        for i in range(num_workers)]
 
-        for i in range(ngpus):
-            psqueue.put(gpu_ids[i])
+    scores = {}
+    configs = {}
 
-        pool = mp.Pool(processes=ngpus, initializer=init_gpu_worker, initargs=(psqueue,))
+    # submit num worker jobs
+    for _ in range(num_workers):
+        next_cfg = next(param_grid)
+        configs[next_cfg["id"]] = next_cfg
+        config_queue.put(next_cfg)
 
-        successful = set()
+    for p in processes:
+        p.daemon = True
+        p.start()
 
-        def worker_done(res, worker_id):
-            """Executed on main process when worker result becomes available
-            """
-            if isinstance(res, Exception):
-                try:
-                    raise res
-                except:
-                    traceback.print_exc()
-                    logger.error('Worker {} terminated with errors: '.format(worker_id), exc_info=True)
-                if cancel:
-                    pool.terminate()
+    num_completed = 0
+    pending = num_workers
+    done = False
+    successful = set()
 
+    while num_completed < n_tasks and not done:
+        try:
+            res = result_queue.get(timeout=1)
+            pid, cfg_id, result = res
+            if not isinstance(result, Exception):
+                successful.add(cfg_id)
+                # cfg = configs[cfg_id]
+                scores[cfg_id] = result
+                num_completed += 1
+                pending -= 1
+
+                if (num_completed + pending) != n_tasks:
+                    next_cfg = next(param_grid)
+                    configs[next_cfg["id"]] = next_cfg
+                    config_queue.put(next_cfg)
+
+                    pending += 1
+                else:
+                    # signal the current worker for termination no more work to be done
+                    terminate_flags[pid].set()
+
+                progress_bar.update()
             else:
-                if isinstance(res, str):
-                    pbar.write(res)
-                pbar.update()
-                successful.add(worker_id)
+                # retrieve one error from queue, might not be exactly the one that failed
+                # since other worker can write to the queue, but we will have at least one error to retrieve
+                _, cfg_id_err, err = error_queue.get()
+                logger.error("configuration {} failed".format(cfg_id_err))
+                logger.error(err)
 
-        for param_dict in param_grid:
-            run_id = param_dict["run_id"]
-            id_callback = partial(worker_done, worker_id=run_id)
-            pool.apply_async(gpu_worker, args=(runnable, param_dict,), callback=id_callback)
+                if cancel:
+                    done = True
+                else:
+                    num_completed += 1
+                    pending -= 1
 
-        pool.close()
-        pool.join()
+                    if (num_completed + pending) != n_tasks:
+                        next_cfg = next(param_grid)
+                        configs[next_cfg["id"]] = next_cfg
+                        config_queue.put(next_cfg)
+                        pending += 1
+                    else:
+                        # signal the current worker for termination no more work to be done
+                        terminate_flags[pid].set()
+                    progress_bar.update()
 
-        pbar.write("DONE")
-        if repeat_cfg is not None:
-            all_ids = repeat_cfg
-        else:
-            all_ids = set(range(ps.grid_size))
-        failed_tasks = all_ids.difference(successful)
-        if len(failed_tasks) > 0:
-            ids = " ".join(map(str, failed_tasks))
-            fail_runs = "failed runs: {}".format(ids)
-            pbar.write(fail_runs)
-            logger.error(fail_runs)
+        except QueueEmpty:
+            pass
 
-        pbar.close()
+    # try to wait for process termination
+    for process in processes:
+        process.join(timeout=0.5)
+
+        if process.is_alive():
+            process.terminate()
+
+    progress_bar.close()
+
+    if len(config_ids) > 0:
+        all_ids = set(config_ids)
+    else:
+        all_ids = set(range(ps.grid_size))
+    failed_tasks = all_ids.difference(successful)
+    if len(failed_tasks) > 0:
+        ids = " ".join(map(str, failed_tasks))
+        fail_runs = "failed runs: {}".format(ids)
+        print(fail_runs, file=sys.stderr)
+        logger.warn(fail_runs)
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='GPU Runner')
-    parser.add_argument('--runnable', metavar='runnable', type=str,
-                        help='path for python module with run function')
-    parser.add_argument('-p', '--params', metavar='params', type=str,
-                        help='path for param space file')
-    parser.add_argument('--name', metavar='name', type=str, default="exp", help='name for experiment')
-    parser.add_argument('-g', '--gpus', metavar='gpus', type=int, default=1,
-                        help='number of gpus to be used')
-
-    parser.add_argument('-n', '--nruns', metavar='nruns', type=int, default=1, required=False,
-                        help='number of gpus to be used')
-
-    parser.add_argument('-c', '--cancel', nargs='?', metavar='cancel', const=True, required=False)
-
-    parser.add_argument('--repeat-cfg', metavar='repeat_cfg', nargs='+', type=int, required=False)
-    parser.add_argument('--repeat-run', metavar='repeat_run', nargs='+', type=int, required=False)
-
-    args = parser.parse_args()
-    repeat_cfg = set(args.repeat_cfg) if args.repeat_cfg is not None else None
-    repeat_run = set(args.repeat_run) if args.repeat_run is not None else None
-    n_runs = args.nruns if args.nruns is not None else 1
-    cancel = args.cancel if args.cancel is not None else False
-    gpu_run(runnable=args.runnable, params=args.params, name=args.name, ngpus=args.gpus, cancel=cancel,
-            nruns=n_runs, repeat_cfg=repeat_cfg, repeat_run=repeat_run)
+    main()

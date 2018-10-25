@@ -1,6 +1,11 @@
-""" Simple parameter Dictionary with default values,
-    option constraints, and type conversion
+""" args is a simple module to allow for quick
+specification of function parameters with default arguments,
+option restriction and type conversion based on type classes
 
+    Param: namedtuple for specification parameters from tuples
+    Namespace: simple object that maps param["param"] parameter
+        dictionaries to namespace.param access.
+    ParamDict: stores Param instances with default values
 """
 from collections import namedtuple
 

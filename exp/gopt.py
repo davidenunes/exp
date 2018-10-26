@@ -168,7 +168,6 @@ def worker(id: int,
 
     """
     # ids should be 0, 1, 2, n where n is the maximum number of gpus available
-    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
     os.environ["CUDA_VISIBLE_DEVICES"] = str(id)
     module = load_module(module_path)
 
@@ -248,6 +247,8 @@ def run(params, module, workers, gpu, n, surrogate, acquisition, name, plot, log
     handler.setFormatter(formatter)
     logger.addHandler(handler)
 
+    opt_results = None
+    out_file = None
     try:
         if gpu:
             # detecting available gpus with load < 0.1
@@ -282,7 +283,6 @@ def run(params, module, workers, gpu, n, surrogate, acquisition, name, plot, log
         optimizer = Optimizer(dimensions=dimensions,
                               base_estimator=surrogate,
                               acq_func=acquisition)
-        opt_results = None
 
         out_file = open(out_file_path, 'w')
         out_writer = csv.DictWriter(out_file, fieldnames=param_space.param_names() + ["id", "evaluation"])
@@ -305,13 +305,13 @@ def run(params, module, workers, gpu, n, surrogate, acquisition, name, plot, log
         submit(num_workers, optimizer, optimizer_dims, configs, param_space, config_queue)
         # cfg_if: score
 
-        for p in processes:
-            p.daemon = True
-            p.start()
-
         num_completed = 0
         pending = len(configs)
         cancel = False
+
+        for p in processes:
+            p.daemon = True
+            p.start()
 
         if plot:
             fig = plt.gcf()
@@ -389,7 +389,6 @@ def run(params, module, workers, gpu, n, surrogate, acquisition, name, plot, log
     except KeyboardInterrupt:
         pass
     finally:
-        progress_bar.set_postfix({"best solution": opt_results["fun"]})
         progress_bar.close()
 
         # debugging
@@ -398,7 +397,8 @@ def run(params, module, workers, gpu, n, surrogate, acquisition, name, plot, log
             out_path = os.path.join(out_dir, plt_file)
             plt.savefig(out_path, bbox_inches='tight')
 
-        out_file.close()
+        if out_file is not None:
+            out_file.close()
 
 
 if __name__ == '__main__':

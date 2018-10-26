@@ -34,7 +34,6 @@ def load_module(runnable_path):
     spec = importlib.util.spec_from_file_location("runnable", location=runnable_path)
     runnable = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(runnable)
-
     try:
         getattr(runnable, "run")
     except AttributeError:
@@ -125,7 +124,7 @@ def main(params, module, runs, name, workers, gpu, config_ids, cancel):
     ps.write_configs('{}_params.csv'.format(name))
 
     param_grid = ps.param_grid(runs=runs)
-    n_tasks = ps.grid_size * runs
+    n_tasks = ps.size * runs
 
     if len(config_ids) > 0:
         n_tasks = len(config_ids) * runs
@@ -227,7 +226,7 @@ def main(params, module, runs, name, workers, gpu, config_ids, cancel):
     if len(config_ids) > 0:
         all_ids = set(config_ids)
     else:
-        all_ids = set(range(ps.grid_size))
+        all_ids = set(range(ps.size))
     failed_tasks = all_ids.difference(successful)
     if len(failed_tasks) > 0:
         ids = " ".join(map(str, failed_tasks))

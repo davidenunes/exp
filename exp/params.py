@@ -87,9 +87,9 @@ class ParamSpace:
             self.params = toml.load(filename)
         else:
             self.params = {}
-        self.grid_size = self._compute_grid_size()
+        self.size = self._compute_size()
 
-    def _compute_grid_size(self):
+    def _compute_size(self):
         """ Returns the size of the parameter space in terms of number of
         unique configurations
 
@@ -121,16 +121,16 @@ class ParamSpace:
         """
         return list(self.params.keys())
 
-    def _update_grid_size(self, n):
+    def _update_space_size(self, n):
         """ Updates the static grid size each instance maintains so it's cheap to return it
 
         Args:
             n: number of values a new parameter being added has
         """
-        if self.grid_size == 0:
-            self.grid_size = n
+        if self.size == 0:
+            self.size = n
         else:
-            self.grid_size *= n
+            self.size *= n
 
     def _get_param(self, name, param_type):
         """ get parameter
@@ -185,9 +185,9 @@ class ParamSpace:
         param["dtype"] = dtype.__name__
         if n:
             param["n"] = n
-            self._update_grid_size(n)
+            self._update_space_size(n)
         else:
-            self._update_grid_size(1)
+            self._update_space_size(1)
 
         param["bounds"] = [low, high]
 
@@ -246,7 +246,7 @@ class ParamSpace:
         param = self.params[name] = {}
         param["type"] = Types.VALUE.value
         param["value"] = value
-        self._update_grid_size(1)
+        self._update_space_size(1)
 
     def get_value(self, name):
         """ get single value parameter
@@ -272,7 +272,7 @@ class ParamSpace:
         param = self.params[name] = {}
         param["type"] = Types.LIST.value
         param["value"] = values
-        self._update_grid_size(len(values))
+        self._update_space_size(len(values))
 
     def add_range(self, name, low=0, high=1, step=1, dtype=float):
         """ Creates range parameter
@@ -289,7 +289,7 @@ class ParamSpace:
         param["bounds"] = [low, high]
         param["step"] = step
         param["dtype"] = dtype.__name__
-        self._update_grid_size(math.ceil((low - high) / step))
+        self._update_space_size(math.ceil((high - low) / step))
 
     def get_range(self, name):
         """ get range value for given range parameter
@@ -464,9 +464,9 @@ class ParamSpace:
         param_product = (dict(zip(params, values)) for values in param_product)
 
         # create ids for each unique configuration
-        ids = np.linspace(0, self.grid_size - 1, self.grid_size, dtype=np.int32)
+        ids = np.linspace(0, self.size - 1, self.size, dtype=np.int32)
         ids = list(_repeat_it(ids, runs))
-        id_param_names = ["id"] * (self.grid_size * runs)
+        id_param_names = ["id"] * (self.size * runs)
 
         id_params = [{k: v} for k, v in zip(id_param_names, ids)]
 

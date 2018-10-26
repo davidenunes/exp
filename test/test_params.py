@@ -21,7 +21,7 @@ class MyTestCase(unittest.TestCase):
         grid = ps.param_grid()
         grid = list(grid)
         self.assertEqual(len(grid), 1 * 2 * 3)
-        self.assertEqual(len(grid), ps.grid_size)
+        self.assertEqual(len(grid), ps.size)
 
     def test_write_recover(self):
         """ There is one issue with writing the param assets which is the fact that these do not preserve the
@@ -61,7 +61,7 @@ class MyTestCase(unittest.TestCase):
         written_summary.close()
         os.remove(summary_file)
 
-        self.assertEqual(len(params), ps.grid_size)
+        self.assertEqual(len(params), ps.size)
 
     def test_add_random(self):
         """ If persist is not set to True for add_random
@@ -74,7 +74,7 @@ class MyTestCase(unittest.TestCase):
         ps.add_random(name, low=2, high=4, persist=False, n=10, prior="uniform")
 
         params1 = ps.param_grid()
-        self.assertTrue(ps.grid_size, 1)
+        self.assertTrue(ps.size, 1)
         r1 = next(params1)[name]
 
         params2 = ps.param_grid()

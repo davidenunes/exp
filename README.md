@@ -8,9 +8,8 @@
 EXP is a python experiment management toolset created to simplify two simple use cases: design and deploy
 experiments in the form of python modules/files.
 
-An experiment is nothing more than some model, function, or module that takes in a set of parameters and outputs 
-results. This module covers the most simple and possibly more prevalent use case where one wants to run it's own 
-experiments in parallel in a local machine or homogeneous cluster.
+An experiment is a series of runs of a given configurable module for a specified set of parameters. This tool covers one of the most prevalent experiment deployment scenarios: testing a set of parameters in parallel in a local machine or homogeneous cluster. EXP also supports [global optimization
+](https://www.cs.ox.ac.uk/people/nando.defreitas/publications/BayesOptLoop.pdf) using **gaussian processes** or other surrogate models such as **random forests**. This can be used for instance as a tool for **hyperoparameter tuning** for machine learning models.
 
 ## Features
 * **parameter space design** based on configuration files

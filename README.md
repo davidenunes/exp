@@ -21,7 +21,7 @@ number of available GPUs, each worker only sees a single GPU by using the ``CUDA
 ## Installation
 work in progress
 
-## Getting Started
+## Getting Started: Optimization
 
 ### 1. Runnable Module
 The first step is to create a module to use in our experiments. A basic configurable module ``runnable.py`` looks like this:

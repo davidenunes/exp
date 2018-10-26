@@ -12,12 +12,11 @@ An experiment is a series of runs of a given configurable module for a specified
 ](https://www.cs.ox.ac.uk/people/nando.defreitas/publications/BayesOptLoop.pdf) using **gaussian processes** or other surrogate models such as **random forests**. This can be used for instance as a tool for **hyperoparameter tuning** for machine learning models.
 
 ## Features
-* **parameter space design** based on configuration files
-* **parallel experiment deployment** using ``multiprocessing`` processes.
+* **parameter space design** based on configuration files (uses the [TOML](https://github.com/toml-lang/toml) format);
+* **parallel experiment deployment** using ``multiprocessing`` processes;
 * **gpu workers** (CUDA only) running on a multi-gpu machine, the number of workers is restricted to the 
 number of available GPUs, each worker only sees a single GPU by using the ``CUDA_VISIBLE_DEVICES`` environment variable.
-* **global optimization** from parameter spaces (e.g. for hyperparameter tunning) using ``scikit-optimize``, and 
-configuration file-based parameter domain definitions. 
+* **global optimization** from parameter spaces (e.g. for hyperparameter tunning) using [scikit-optimize](https://scikit-optimize.github.io/)
 
 ## Installation
 work in progress

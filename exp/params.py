@@ -69,6 +69,10 @@ class DTypes(Enum):
                                                            ",".join([t.name for t in DTypes])))
 
 
+class ParamSpaceError(Exception):
+    pass
+
+
 class ParamSpace:
     """ ParamSpace
 
@@ -224,15 +228,22 @@ class ParamSpace:
                 rvs = np.random.uniform(low=bounds[0], high=bounds[1], size=n)
             else:
                 rvs = np.random.randint(low=bounds[0], high=bounds[1], size=n)
-        if prior == "log-uniform":
+        elif prior == "log-uniform":
             if dtype == "float":
                 if bounds[0] == 0:
-                    raise ValueError("lower bound on a log space cannot be 0")
+                    raise ParamSpaceError(
+                        "Invalid bounds for parameter [{}] lower bound on a log space cannot be 0".format(name))
                 low = np.log10(bounds[0])
                 high = np.log10(bounds[1])
                 rvs = np.power(10, np.random.uniform(low, high, size=n))
             else:
-                raise NotImplementedError("log uniform not implemented for random integer numbers")
+                raise ParamSpaceError(
+                    """\n Invalid prior value "{}" for parameter [{}] with dtype="float": random integer only supports "uniform" prior """.format(
+                        prior, name))
+        else:
+            raise ParamSpaceError(
+                """\n Invalid prior value "{}" for parameter [{}], valid priors are:\n \t"uniform" \n \t"log-uniform" """.format(
+                    prior, name))
 
         return rvs
 

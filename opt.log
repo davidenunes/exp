@@ -1,0 +1,168 @@
+2018-10-27 00:30:30,328 - __main__ - ERROR - Traceback (most recent call last):
+  File "/home/davex32/dev/exp/exp/gopt.py", line 279, in run
+    param_space = ParamSpace(params)
+  File "/home/davex32/dev/exp/exp/params.py", line 90, in __init__
+    self.size = self._compute_size()
+  File "/home/davex32/dev/exp/exp/params.py", line 108, in _compute_size
+    param_value = self.get_param(param, param_type)
+  File "/home/davex32/dev/exp/exp/params.py", line 361, in get_param
+    return self.get_random(param)
+  File "/home/davex32/dev/exp/exp/params.py", line 237, in get_random
+    return rvs
+UnboundLocalError: local variable 'rvs' referenced before assignment
+
+2018-10-27 00:32:54,254 - __main__ - ERROR - Traceback (most recent call last):
+  File "/home/davex32/dev/exp/exp/gopt.py", line 279, in run
+    param_space = ParamSpace(params)
+  File "/home/davex32/dev/exp/exp/params.py", line 91, in __init__
+    self.size = self._compute_size()
+  File "/home/davex32/dev/exp/exp/params.py", line 109, in _compute_size
+    param_value = self.get_param(param, param_type)
+  File "/home/davex32/dev/exp/exp/params.py", line 365, in get_param
+    return self.get_random(param)
+  File "/home/davex32/dev/exp/exp/params.py", line 239, in get_random
+    """\n Unknown prior "{}", valid priors are:\n \t-"uniform", \n \t-"log-uniform" """.format(prior))
+TypeError: 
+ Unknown prior "lasd", valid priors are:
+ 	-"uniform", 
+ 	-"log-uniform" 
+
+2018-10-27 00:33:27,752 - __main__ - ERROR - Traceback (most recent call last):
+  File "/home/davex32/dev/exp/exp/gopt.py", line 279, in run
+    param_space = ParamSpace(params)
+  File "/home/davex32/dev/exp/exp/params.py", line 91, in __init__
+    self.size = self._compute_size()
+  File "/home/davex32/dev/exp/exp/params.py", line 109, in _compute_size
+    param_value = self.get_param(param, param_type)
+  File "/home/davex32/dev/exp/exp/params.py", line 365, in get_param
+    return self.get_random(param)
+  File "/home/davex32/dev/exp/exp/params.py", line 239, in get_random
+    """\n Unknown prior "{}", valid priors are:\n \t-"uniform", \n \t-"log-uniform" """.format(prior))
+TypeError: __init__() missing 2 required positional arguments: 'doc' and 'pos'
+
+2018-10-27 00:34:56,940 - __main__ - ERROR - Traceback (most recent call last):
+  File "/home/davex32/dev/exp/exp/gopt.py", line 279, in run
+    param_space = ParamSpace(params)
+  File "/home/davex32/dev/exp/exp/params.py", line 95, in __init__
+    self.size = self._compute_size()
+  File "/home/davex32/dev/exp/exp/params.py", line 113, in _compute_size
+    param_value = self.get_param(param, param_type)
+  File "/home/davex32/dev/exp/exp/params.py", line 369, in get_param
+    return self.get_random(param)
+  File "/home/davex32/dev/exp/exp/params.py", line 243, in get_random
+    """\n Unknown prior "{}", valid priors are:\n \t-"uniform", \n \t-"log-uniform" """.format(prior))
+exp.params.ParamSpaceError: 
+ Unknown prior "lasd", valid priors are:
+ 	-"uniform", 
+ 	-"log-uniform" 
+
+2018-10-27 00:36:37,121 - __main__ - ERROR - Traceback (most recent call last):
+  File "/home/davex32/dev/exp/exp/gopt.py", line 279, in run
+    param_space = ParamSpace(params)
+  File "/home/davex32/dev/exp/exp/params.py", line 94, in __init__
+    self.size = self._compute_size()
+  File "/home/davex32/dev/exp/exp/params.py", line 112, in _compute_size
+    param_value = self.get_param(param, param_type)
+  File "/home/davex32/dev/exp/exp/params.py", line 369, in get_param
+    return self.get_random(param)
+  File "/home/davex32/dev/exp/exp/params.py", line 243, in get_random
+    prior, name))
+exp.params.ParamSpaceError: 
+ Unknown prior "lasd in parameter y", valid priors are:
+ 	-"uniform", 
+ 	-"log-uniform" 
+
+2018-10-27 00:37:06,744 - __main__ - ERROR - Traceback (most recent call last):
+  File "/home/davex32/dev/exp/exp/gopt.py", line 279, in run
+    param_space = ParamSpace(params)
+  File "/home/davex32/dev/exp/exp/params.py", line 94, in __init__
+    self.size = self._compute_size()
+  File "/home/davex32/dev/exp/exp/params.py", line 112, in _compute_size
+    param_value = self.get_param(param, param_type)
+  File "/home/davex32/dev/exp/exp/params.py", line 369, in get_param
+    return self.get_random(param)
+  File "/home/davex32/dev/exp/exp/params.py", line 243, in get_random
+    prior, name))
+exp.params.ParamSpaceError: 
+ Invalid prior value lasd for parameter y, valid priors are:
+ 	-"uniform", 
+ 	-"log-uniform" 
+
+2018-10-27 00:37:31,542 - __main__ - ERROR - Traceback (most recent call last):
+  File "/home/davex32/dev/exp/exp/gopt.py", line 279, in run
+    param_space = ParamSpace(params)
+  File "/home/davex32/dev/exp/exp/params.py", line 94, in __init__
+    self.size = self._compute_size()
+  File "/home/davex32/dev/exp/exp/params.py", line 112, in _compute_size
+    param_value = self.get_param(param, param_type)
+  File "/home/davex32/dev/exp/exp/params.py", line 369, in get_param
+    return self.get_random(param)
+  File "/home/davex32/dev/exp/exp/params.py", line 243, in get_random
+    prior, name))
+exp.params.ParamSpaceError: 
+ Invalid prior value lasd for parameter y, valid priors are:
+ 	-"uniform", 
+ 	-"log-uniform" 
+
+2018-10-27 00:37:56,263 - __main__ - ERROR - Traceback (most recent call last):
+  File "/home/davex32/dev/exp/exp/gopt.py", line 279, in run
+    param_space = ParamSpace(params)
+  File "/home/davex32/dev/exp/exp/params.py", line 94, in __init__
+    self.size = self._compute_size()
+  File "/home/davex32/dev/exp/exp/params.py", line 112, in _compute_size
+    param_value = self.get_param(param, param_type)
+  File "/home/davex32/dev/exp/exp/params.py", line 369, in get_param
+    return self.get_random(param)
+  File "/home/davex32/dev/exp/exp/params.py", line 243, in get_random
+    prior, name))
+exp.params.ParamSpaceError: 
+ Invalid prior value lasd for parameter y, valid priors are:
+ 	-"uniform", 
+ 	-"log-uniform" 
+
+2018-10-27 00:38:28,200 - __main__ - ERROR - Traceback (most recent call last):
+  File "/home/davex32/dev/exp/exp/gopt.py", line 279, in run
+    param_space = ParamSpace(params)
+  File "/home/davex32/dev/exp/exp/params.py", line 94, in __init__
+    self.size = self._compute_size()
+  File "/home/davex32/dev/exp/exp/params.py", line 112, in _compute_size
+    param_value = self.get_param(param, param_type)
+  File "/home/davex32/dev/exp/exp/params.py", line 369, in get_param
+    return self.get_random(param)
+  File "/home/davex32/dev/exp/exp/params.py", line 243, in get_random
+    prior, name))
+exp.params.ParamSpaceError: 
+ Invalid prior value "lasd" for parameter [y], valid priors are:
+ 	-"uniform", 
+ 	-"log-uniform" 
+
+2018-10-27 00:38:42,648 - __main__ - ERROR - Traceback (most recent call last):
+  File "/home/davex32/dev/exp/exp/gopt.py", line 279, in run
+    param_space = ParamSpace(params)
+  File "/home/davex32/dev/exp/exp/params.py", line 94, in __init__
+    self.size = self._compute_size()
+  File "/home/davex32/dev/exp/exp/params.py", line 112, in _compute_size
+    param_value = self.get_param(param, param_type)
+  File "/home/davex32/dev/exp/exp/params.py", line 369, in get_param
+    return self.get_random(param)
+  File "/home/davex32/dev/exp/exp/params.py", line 243, in get_random
+    prior, name))
+exp.params.ParamSpaceError: 
+ Invalid prior value "lasd" for parameter [y], valid priors are:
+ 	"uniform" 
+ 	"log-uniform" 
+
+2018-10-27 00:40:31,873 - __main__ - ERROR - Traceback (most recent call last):
+  File "/home/davex32/dev/exp/exp/gopt.py", line 279, in run
+    param_space = ParamSpace(params)
+  File "/home/davex32/dev/exp/exp/params.py", line 94, in __init__
+    self.size = self._compute_size()
+  File "/home/davex32/dev/exp/exp/params.py", line 112, in _compute_size
+    param_value = self.get_param(param, param_type)
+  File "/home/davex32/dev/exp/exp/params.py", line 371, in get_param
+    return self.get_random(param)
+  File "/home/davex32/dev/exp/exp/params.py", line 241, in get_random
+    prior, name))
+exp.params.ParamSpaceError: 
+ Invalid prior value "log-uniform" for parameter [y] with dtype="float": random integer only supports "uniform" prior 
+

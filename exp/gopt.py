@@ -21,8 +21,8 @@ from skopt.space import Integer, Real, Categorical
 from tqdm import tqdm
 from tqdm._utils import _term_move_up
 import traceback
-
-from exp.params import ParamSpace, DTypes
+from toml import TomlDecodeError
+from exp.params import ParamSpace, DTypes,ParamSpaceError
 
 
 def params_to_skopt(param_space: ParamSpace):
@@ -276,8 +276,8 @@ def run(params, module, workers, gpu, n, surrogate, acquisition, name, plot, log
         out_dir = os.path.abspath(os.path.join(out_file_path, os.pardir))
         out_file_path = os.path.join(out_dir, out_file_name)
 
-        progress_bar = tqdm(total=n, leave=True)
         param_space = ParamSpace(params)
+
         dimensions = params_to_skopt(param_space)
         optimizer_dims = [d.name for d in dimensions]
         optimizer = Optimizer(dimensions=dimensions,
@@ -317,6 +317,8 @@ def run(params, module, workers, gpu, n, surrogate, acquisition, name, plot, log
             fig = plt.gcf()
             fig.show()
             fig.canvas.draw()
+
+        progress_bar = tqdm(total=n, leave=True)
 
         if kuma:
             update_progress_kuma(progress_bar)
@@ -383,14 +385,21 @@ def run(params, module, workers, gpu, n, surrogate, acquisition, name, plot, log
 
             if process.is_alive():
                 process.terminate()
+
+        progress_bar.close()
+
+    except TomlDecodeError as e:
+        logger.error(traceback.format_exc())
+        print("\n\n[Invalid parameter file] TOML decode error:\n {}".format(e), file=sys.stderr)
+    except ParamSpaceError as e:
+        logger.error(traceback.format_exc())
+        print("\n\n[Invalid parameter file]\n {}".format(e), file=sys.stderr)
     except Exception as e:
-        logger.log(logging.ERROR, traceback.format_exc())
+        logger.error(traceback.format_exc())
         raise e
     except KeyboardInterrupt:
         pass
     finally:
-        progress_bar.close()
-
         # debugging
         if opt_results is not None and plot:
             plt_file = '{}_convergence.pdf'.format(name)

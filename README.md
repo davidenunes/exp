@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://github.com/davidenunes/exp" target="_blank">
-    <img width="200"src="extras/extras/exp.png">
+    <img width="200"src="extras/exp.png">
   </a>
 </p>
 <h1 align="center">exp</h1>

@@ -3,7 +3,7 @@
     <img width="200"src="extras/exp.png">
   </a>
 </p>
-<p align="center">Experiment design, deployment, and optimization</p>
+<p align="center">Experiment <strong>design</strong>, <strong>deployment</strong>, and <strong>optimization</strong></p>
 
 EXP is a python experiment management toolset created to simplify two simple use cases: design and deploy
 experiments in the form of python modules/files.
@@ -12,7 +12,7 @@ An experiment is nothing more than some model, function, or module that takes in
 results. This module covers the most simple and possibly more prevalent use case where one wants to run it's own 
 experiments in parallel in a local machine or homogeneous cluster.
 
-##Features
+## Features
 * **parameter space design** based on configuration files
 * **parallel experiment deployment** using ``multiprocessing`` processes.
 * **gpu workers** (CUDA only) running on a multi-gpu machine, the number of workers is restricted to the 
@@ -20,12 +20,12 @@ number of available GPUs, each worker only sees a single GPU by using the ``CUDA
 * **global optimization** from parameter spaces (e.g. for hyperparameter tunning) using ``scikit-optimize``, and 
 configuration file-based parameter domain definitions. 
 
-##Installation
+## Installation
 work in progress
 
-##Getting Started
+## Getting Started
 
-###1. Runnable Module
+### 1. Runnable Module
 The first step is to create a module to use in our experiments. A basic configurable module ``runnable.py`` looks like this:
 ```python
 def run(x=1, **kwargs):
@@ -41,7 +41,7 @@ def run(**kwargs):
     return x ** 2
 ```
 
-###2. Parameter Space Definition
+### 2. Parameter Space Definition
 Next, we need a configuration file ``basic.conf`` were the parameters are specified:
 ```markdown
 [x]
@@ -52,7 +52,7 @@ This defines a parameter space with a single parameter ``x`` with values in the 
 files use [TOML](https://github.com/toml-lang/toml) format. For how to specify parameter spaces, see the specification
 [here](##Parameter Space Specification).
 
-###3. Module Optimization
+### 3. Module Optimization
 Our simple module returns the ``x**2``, the optimizer tries to find the minimum value of 
 this function based on the parameter space given by the configuration file. In this case, the optimizer
 will look at values of ``x`` between ``[-10,10]`` and try to find the minimum value.
@@ -62,6 +62,7 @@ running:
 python -m exp.gopt --params basic.conf --module runnable.py --n 20 --workers 4
 ```
 ![exp](extras/getting_started.gif)
+
 finds a solution very close to ``0``. By default, the optimizer assumes a range defines the boundaries
 of a real-valued variable. If you wish to optimize discrete integers use the following specification:
 
@@ -75,11 +76,11 @@ The optimizer will explore only discreve values between -10 and 10 inclusively. 
 evaluated are written to a ``.csv`` file.
 
 
-##Parameter Space Specification
+## Parameter Space Specification
 work in progress
 
 
-###ParamSpace
+### ParamSpace
 The ``exp.params.ParamSpace`` class provides a way to create parameter spaces and iterate over all the possible 
 combinations of parameters as follows: 
 ```python
@@ -98,7 +99,7 @@ grid = ps.param_grid(runs=2)
 ``grid`` has ``2*ps.size`` because we repeat each configuration ``2`` times (number of runs). Each configuration dictionary
 includes 2 additional parameters ``"id"`` and ``"run"`` which are the unique configuration id and run id respectively.
 
-###Notes:
+### Notes:
 * the **"range" param type** works differently on ``gopt`` and ``run`` commands. The **optimizer** will use the bounds
 of the range to explore parameters within the range **including the end-points**. When specifying parameter grids, 
 the **runner** assumes a range **does not include the end-point** (and thus works like a python or numpy range).

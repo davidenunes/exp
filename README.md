@@ -3,7 +3,7 @@
     <img width="200"src="extras/exp.png">
   </a>
 </p>
-<p align="center">simple experiment design, deployment, and optimization</p>
+<p align="center">Experiment design, deployment, and optimization</p>
 
 EXP is a python experiment management toolset created to simplify two simple use cases: design and deploy
 experiments in the form of python modules/files.

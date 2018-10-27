@@ -3,13 +3,15 @@
     :obj:`ParamSpace` uses TOML as the underlying format to write and load
     configurations to and from
 """
-import math
-import toml
-import itertools
-import numpy as np
 import csv
+import itertools
+import math
 import os
 from enum import Enum
+
+import numpy as np
+
+import toml
 
 
 def _repeat_it(iterable, n):

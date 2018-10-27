@@ -16,7 +16,16 @@ An experiment is a series of runs of a given configurable module for a specified
 * **global optimization** from parameter spaces (e.g. for hyperparameter tunning) using [scikit-optimize](https://scikit-optimize.github.io/).
 
 ## Installation
-work in progress
+pip install exp
+
+## Available CLI tools
+EXP provides two CLI modules:
+* exp.run:  ``python -m exp.run -p basic.conf -m runnable.py --workers 10``
+* exp.gopt:``python -m exp.gopt -p basic.conf -m runnable.py --workers 4 -n 100 --plot``
+
+for more information check each commands help:
+
+``python -m exp.run -h``
 
 ## Getting Started: Optimization
 
@@ -107,16 +116,40 @@ The commands ``run`` and ``gopt`` will treat this parameter definition different
 The ``dtype`` also influences how the optimizer looks for values in the range, if set to ``"int"``, it explores discrete integer values within the bounds; if set to ``"float"``, it assumes the parameter takes a continuous value between the specified bounds.
 
 ### Random
+A parameter with ``n`` random values sampled from "uniform" or "log-uniform" between the given bounds. If used with ``run``, a parameter space will be populated with a list of random values according to the specification. If used with ``gopt``, ``n`` is ignored and bounds are used instead, along with the prior.
+
+For optimization purposes, this works like range, except that you can specify the prior which can be "uniform" or "log-uniform", range assumes that the values are generated from "uniform" prior, when the parameter is used for optimization.
+
+The other difference between parameter grids and optimization is that the bounds do not include the end-points when generating parameter values for grid search. The optimizer will explore random values within the bounds specified, including the high end-point.
+
 ```python
 [random_param]
 type="random"
-
+bounds=[0,3]		# optional, default range is [0,1]
+prior="uniform"	# optional, default value is "uniform"
+dtype="float"      # optional, default value is "float"
+n=1				# optional, default value is 1 (number of random parameters to be sampled)
 ```
 ### List
+A list is just an homogeneous series of values a parameter can take.
+```python
+[another_param]
+type="list"
+value = [1,2,3]
+```
+The array in ``"value"`` must be homogenous, something like ``value=[1,2,"A"]`` would throw a *Not a homogeneous array* error. List parameters are treated by ``gopt`` command as a **categorical** parameter. This is encoded using a *one-hot-encoding* for optimization.
 
+Also, for optimization purposes, a list is treated like a set, if you provide duplicate values it will only explore the unique values. For example if you want to specify a boolean parameter, use a list:
 
+```python
+[some_boolean_decision]
+type="list"
+value = [true,false]
+```
 
-### ParamSpace
+# Library Modules
+EXP also provides different tools to specify param spaces programmatically
+## ParamSpace
 The ``exp.params.ParamSpace`` class provides a way to create parameter spaces and iterate over all the possible 
 combinations of parameters as follows: 
 ```python
@@ -134,5 +167,40 @@ grid = ps.param_grid(runs=2)
 ```
 ``grid`` has ``2*ps.size`` configurations because we repeat each configuration ``2`` times (number of runs). Each configuration dictionary includes 2 additional parameters ``"id"`` and ``"run"`` which are the unique configuration id and run id respectively.
 
-### Notes:
-* the **"range" param type** works differently on ``gopt`` and ``run`` commands. The **optimizer** will use the bounds of the range to explore parameters within the range **including the end-points**. When specifying parameter grids, the **runner** assumes a range **does not include the end-point** (and thus works like a python or numpy range).
+```python
+for config in grid:
+	# config is a dictionary with the params of a unique configuration in the parameter space
+	do_something(config)
+```
+
+## ParamDict & Namespace
+``ParamDict`` from ``exp.args`` module is a very simple dictionary where you can specify default values for different parameters. ``exp.args.Param`` is a named tuple: ``(typefn,default,options)`` where ``typefn`` is a type function like ``int`` or ``float`` that transforms strings into values of the given type if necessary, ``default`` is a default value, ``options`` is a list of possible values for the parameter.
+
+This is just a very simple alternative to using argparse with a lot of of parameters. Example of usage:
+
+```python
+from exp.args import ParamDict,Namespace
+
+# these are interpreted by a ParamDict as a exp.args.Param named tuple
+param_spec = {
+    'x': (float, None),
+    'id': (int, 0),
+    'run': (int, 1),
+    'cat': (str, "A", ["A","B"])
+}
+
+def run(**kargs):
+    args = ParamDict(param_spec) # creates a param dict from default values and options
+    args.from_dict(kargs)	  # updates the dictionary with new values where the parameter name overlaps
+    ns = args.to_namespace()   # creates a namespace object so you can access ns.x, ns.run etc
+    ...
+```
+
+Another nice thing is that there is basic type conversions from string to boolean, int, float, etc. Depending
+on the arguments received in ``kwargs``, ``ParamDict`` converts the values automatically according to the parameter
+specifications.
+
+## Created by
+[Davide Nunes](davidenunes.com)
+
+## Licence

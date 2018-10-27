@@ -9,6 +9,7 @@ setup(name='exp',
       author='Davide Nunes',
       author_email='mail@davidenunes.com',
       url = 'https://github.com/davidenunes/exp',
+      download_url = 'https://github.com/davidenunes/exp/archive/v0.3.tar.gz',
       packages=['exp'],
       install_requires=[
           'toml',

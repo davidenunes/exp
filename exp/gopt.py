@@ -22,7 +22,7 @@ from tqdm import tqdm
 from tqdm._utils import _term_move_up
 import traceback
 from toml import TomlDecodeError
-from exp.params import ParamSpace, DTypes,ParamSpaceError
+from exp.params import ParamSpace, DTypes, ParamDecodeError
 
 
 def params_to_skopt(param_space: ParamSpace):
@@ -391,7 +391,7 @@ def run(params, module, workers, gpu, n, surrogate, acquisition, name, plot, log
     except TomlDecodeError as e:
         logger.error(traceback.format_exc())
         print("\n\n[Invalid parameter file] TOML decode error:\n {}".format(e), file=sys.stderr)
-    except ParamSpaceError as e:
+    except ParamDecodeError as e:
         logger.error(traceback.format_exc())
         print("\n\n[Invalid parameter file]\n {}".format(e), file=sys.stderr)
     except Exception as e:

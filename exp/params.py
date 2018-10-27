@@ -16,6 +16,14 @@ def _repeat_it(iterable, n):
     return itertools.chain.from_iterable(itertools.repeat(x, n) for x in iterable)
 
 
+class ParamError(Exception):
+    pass
+
+
+class ParamDecodeError(ParamError):
+    pass
+
+
 class Types(Enum):
     """ Enum with valid parameter types supported by :obj:`ParamSpace`
 
@@ -67,10 +75,6 @@ class DTypes(Enum):
             raise ValueError("invalid parameter dtype: {}\n"
                              "supported values: {}".format(dtype,
                                                            ",".join([t.name for t in DTypes])))
-
-
-class ParamSpaceError(Exception):
-    pass
 
 
 class ParamSpace:
@@ -231,19 +235,20 @@ class ParamSpace:
         elif prior == "log-uniform":
             if dtype == "float":
                 if bounds[0] == 0:
-                    raise ParamSpaceError(
+                    raise ParamDecodeError(
                         "Invalid bounds for parameter [{}] lower bound on a log space cannot be 0".format(name))
                 low = np.log10(bounds[0])
                 high = np.log10(bounds[1])
                 rvs = np.power(10, np.random.uniform(low, high, size=n))
             else:
-                raise ParamSpaceError(
-                    """\n Invalid prior value "{}" for parameter [{}] with dtype="float": random integer only supports "uniform" prior """.format(
-                        prior, name))
+                raise ParamDecodeError(
+                    """\n Invalid prior value "{}" for parameter [{}] with dtype="float": 
+                    random integer only supports "uniform" prior """.format(prior, name))
         else:
-            raise ParamSpaceError(
-                """\n Invalid prior value "{}" for parameter [{}], valid priors are:\n \t"uniform" \n \t"log-uniform" """.format(
-                    prior, name))
+            raise ParamDecodeError(
+                """\n Invalid prior value "{}" for parameter [{}], valid priors are:\n
+                 \t"uniform" \n
+                 \t"log-uniform" """.format(prior, name))
 
         return rvs
 
@@ -315,7 +320,7 @@ class ParamSpace:
         """
         param = self._get_param(name, Types.RANGE)
         if "bounds" not in param:
-            raise LookupError(""" "bounds" not found for parameter {}""".format(name))
+            raise ParamDecodeError(""" "bounds" not found for parameter {}""".format(name))
         low = float(param["bounds"][0])
         # high = float(param["bounds"]["high"])
         high = float(param["bounds"][1])
@@ -326,7 +331,9 @@ class ParamSpace:
         else:
             dtype = param["dtype"]
             if dtype not in ("int", "float"):
-                raise TypeError("invalid dtype for {}: expected int or float, got {}".format(name, dtype))
+                raise ParamDecodeError("""invalid "dtype" for parameter "{}": 
+                expected int or float, got {}""".format(name, dtype))
+
             dtype = int if dtype == "int" else float
 
         return np.arange(low, high, step, dtype=dtype)

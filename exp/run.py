@@ -12,7 +12,7 @@ from toml import TomlDecodeError
 from tqdm import tqdm
 from multiprocessing import Queue, Event, Process
 from multiprocessing.queues import Empty as QueueEmpty
-from exp.params import ParamSpace, ParamSpaceError
+from exp.params import ParamSpace, ParamDecodeError
 
 
 def load_module(runnable_path):
@@ -239,7 +239,7 @@ def main(params, module, runs, name, workers, gpu, config_ids, cancel):
     except TomlDecodeError as e:
         logger.error(traceback.format_exc())
         print("\n\n[Invalid parameter file] TOML decode error:\n {}".format(e), file=sys.stderr)
-    except ParamSpaceError as e:
+    except ParamDecodeError as e:
         logger.error(traceback.format_exc())
         print("\n\n[Invalid parameter file]\n {}".format(e), file=sys.stderr)
 

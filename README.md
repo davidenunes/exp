@@ -22,7 +22,9 @@ An experiment is a series of runs of a given configurable module for a specified
 * **global optimization** from parameter spaces (e.g. for hyperparameter tunning) using [scikit-optimize](https://scikit-optimize.github.io/).
 
 ## Installation
-pip install exp
+``pip install exp`` 
+
+``pipenv install exp`` with [pipenv](https://pipenv.readthedocs.io/en/latest/install/#pragmatic-installation-of-pipenv)
 
 ## Available CLI tools
 EXP provides two CLI modules:

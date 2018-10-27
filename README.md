@@ -5,6 +5,12 @@
 </p>
 <p align="center">Experiment <strong>design</strong>, <strong>deployment</strong>, and <strong>optimization</strong></p>
 
+<center>	
+	
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0.html)
+
+</center>
+
 EXP is a python experiment management toolset created to simplify two simple use cases: design and deploy experiments in the form of python modules/files.
 
 An experiment is a series of runs of a given configurable module for a specified set of parameters. This tool covers one of the most prevalent experiment deployment scenarios: testing a set of parameters in parallel in a local machine or homogeneous cluster. EXP also supports [global optimization](https://www.cs.ox.ac.uk/people/nando.defreitas/publications/BayesOptLoop.pdf) using **gaussian processes** or other surrogate models such as **random forests**. This can be used for instance as a tool for **hyperoparameter tuning** for machine learning models.
@@ -201,6 +207,8 @@ on the arguments received in ``kwargs``, ``ParamDict`` converts the values autom
 specifications.
 
 ## Created by
-[Davide Nunes](davidenunes.com)
+**[Davide Nunes](davidenunes.com)**
 
 ## Licence
+
+[Apache License 2.0](LICENSE)

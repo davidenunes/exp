@@ -4,12 +4,10 @@
   </a>
 </p>
 <p align="center">Experiment <strong>design</strong>, <strong>deployment</strong>, and <strong>optimization</strong></p>
-
-<center>	
+	
 	
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0.html)
 
-</center>
 
 EXP is a python experiment management toolset created to simplify two simple use cases: design and deploy experiments in the form of python modules/files.
 

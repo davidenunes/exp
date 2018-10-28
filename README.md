@@ -209,7 +209,7 @@ on the arguments received in ``kwargs``, ``ParamDict`` converts the values autom
 specifications.
 
 ## Created by
-**[Davide Nunes](davidenunes.com)**
+**[Davide Nunes](https://github.com/davidenunes)**
 
 ## Licence
 

@@ -59,7 +59,7 @@ class UploadCommand(Command):
         os.system("git push --tags")
         sys.exit()
 
-setup(name='experiment',
+setup(name='exp',
       version=about["__version__"],
       description='Python tool do design and run experiments with global optimisation and grid search',
       long_description=long_description,

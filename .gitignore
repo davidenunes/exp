@@ -55,5 +55,8 @@ target/
 _build/
 
 
+.vscode
+
+
 # Idea
 .idea

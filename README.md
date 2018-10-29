@@ -83,7 +83,7 @@ dtype = "int"
 The optimizer will explore discrete values between -10 and 10 inclusively. Also, using the ``--plot`` flag displays a real-time **convergence plot** for the optimization process.
 
 <p align="center">
-    <img src="https://raw.githubusercontent.com/davidenunes/exp/master/extras/convergence.svg">
+    <img src="https://raw.githubusercontent.com/davidenunes/exp/master/extras/convergence.png">
 </p>
 
 which in this case converges immediately because the function to be optimized is quite simple, but the goal is to optimize complex models and choosing from a large set of parameters without having to run an exhaustive search through all the possible parameter combinations.

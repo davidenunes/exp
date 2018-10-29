@@ -67,11 +67,10 @@ Our simple module returns the ``x**2``, the optimizer tries to find the minimum 
 ```bash
 python -m exp.gopt --params basic.conf --module runnable.py --n 20 --workers 4
 ```
-<center>
 
-![exp](extras/getting_started.gif)
-<br />
-</center>
+<p align="center">
+    <img src="https://github.com/davidenunes/exp/blob/master/extras/getting_started.gif">
+</p>
 
 finds a solution very close to ``0``. By default, the optimizer assumes a range defines the boundaries of a real-valued variable. If you wish to optimize discrete integers use the following specification:
 
@@ -83,10 +82,9 @@ dtype = "int"
 ``` 
 The optimizer will explore discrete values between -10 and 10 inclusively. Also, using the ``--plot`` flag displays a real-time **convergence plot** for the optimization process.
 
-<center>
-![convergence](extras/convergence.svg)
-<br/>
-</center>
+<p align="center">
+    <img src="https://github.com/davidenunes/exp/blob/master/extras/convergence.svg">
+</p>
 
 which in this case converges immediately because the function to be optimized is quite simple, but the goal is to optimize complex models and choosing from a large set of parameters without having to run an exhaustive search through all the possible parameter combinations.
 

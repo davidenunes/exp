@@ -43,7 +43,7 @@ def load_module(runnable_path):
     return runnable
 
 
-def worker(id: int,
+def worker(pid: int,
            module_path: str,
            config_queue: Queue,
            result_queue: Queue,
@@ -57,7 +57,7 @@ def worker(id: int,
         error_queue: used to pass formatted stack traces to the main process
         module_path: path to model runnable that is imported. It's method run is called on a given configuration
         terminated: each worker should have its own flag
-        id: (int) with worker id
+        pid: (int) with worker id
         config_queue: configuration queue used to receive the parameters for this worker, each configuration is a task
         result_queue: queue where the worker deposits the results
 
@@ -69,22 +69,23 @@ def worker(id: int,
 
     """
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(id)
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(pid)
     module = load_module(module_path)
 
     while not terminated.is_set():
         try:
             kwargs = config_queue.get(timeout=0.5)
             cfg_id = kwargs["id"]
+            kwargs["pid"] = pid
             result = module.run(**kwargs)
-            result_queue.put((id, cfg_id, result))
+            result_queue.put((pid, cfg_id, result))
         except QueueEmpty:
             pass
         except Exception as e:
             if cancel:
                 terminated.set()
-            error_queue.put((id, cfg_id, traceback.format_exc()))
-            result_queue.put((id, cfg_id, e))
+            error_queue.put((pid, cfg_id, traceback.format_exc()))
+            result_queue.put((pid, cfg_id, e))
 
 
 @click.command(help='runs all the configurations in a defined space')

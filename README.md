@@ -58,8 +58,7 @@ Next, we need a configuration file ``basic.conf`` were the parameters are specif
 type = "range"
 bounds = [-10,10]
 ```
-This defines a parameter space with a single parameter ``x`` with values in the range ``[-10,10]``. For how to specify parameter spaces, see the specification
-[here](##Parameter Space Specification).
+This defines a parameter space with a single parameter ``x`` with values in the range ``[-10,10]``. For how to specify parameter spaces, see the Parameter Space Specification.
 
 ### 3. Module Optimization
 Our simple module returns the ``x**2``, the optimizer tries to find the minimum value of this function based on the parameter space given by the configuration file. In this case, the optimizer will look at values of ``x`` between ``[-10,10]`` and try to find the minimum value.
@@ -129,10 +128,10 @@ The other difference between parameter grids and optimization is that the bounds
 ```python
 [random_param]
 type="random"
-bounds=[0,3]		# optional, default range is [0,1]
-prior="uniform"	# optional, default value is "uniform"
-dtype="float"      # optional, default value is "float"
-n=1				# optional, default value is 1 (number of random parameters to be sampled)
+bounds=[0,3]    # optional, default range is [0,1]
+prior="uniform" # optional, default value is "uniform"
+dtype="float"   # optional, default value is "float"
+n=1             # optional, default value is 1 (number of random parameters to be sampled)
 ```
 ### List
 A list is just an homogeneous series of values a parameter can take.
@@ -195,8 +194,8 @@ param_spec = {
 
 def run(**kargs):
     args = ParamDict(param_spec) # creates a param dict from default values and options
-    args.from_dict(kargs)	  # updates the dictionary with new values where the parameter name overlaps
-    ns = args.to_namespace()   # creates a namespace object so you can access ns.x, ns.run etc
+    args.from_dict(kargs)        # updates the dictionary with new values where the parameter name overlaps
+    ns = args.to_namespace()     # creates a namespace object so you can access ns.x, ns.run etc
     ...
 ```
 

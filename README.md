@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://github.com/davidenunes/exp" target="_blank">
-    <img width="200"src="extras/exp.png">
+    <img width="200"src="https://github.com/davidenunes/exp/blob/master/extras/exp.png">
   </a>
 </p>
 <p align="center">Experiment <strong>design</strong>, <strong>deployment</strong>, and <strong>optimization</strong></p>

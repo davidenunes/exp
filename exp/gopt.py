@@ -338,6 +338,8 @@ def run(params, module, workers, gpu, n, surrogate, acquisition, name, plot, log
                     out_row = dict(cfg)
                     out_row["evaluation"] = result
                     out_writer.writerow(out_row)
+                    # make sure we can see the results in the file as we run the optimizer
+                    out_file.flush()
                     opt_results = optimizer.tell(x, result)
 
                     num_completed += 1

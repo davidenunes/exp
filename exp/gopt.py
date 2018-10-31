@@ -58,10 +58,12 @@ def params_to_skopt(param_space: ParamSpace):
                 low = min(domain)
                 high = max(domain)
                 prior = domain_param.get("prior", None)
-                dimensions.append(Real(low, high, prior=prior, name=param_name))
+                dimensions.append(
+                    Real(low, high, prior=prior, name=param_name))
             elif dtype == DTypes.CATEGORICAL:
                 prior = domain_param.get("prior", None)
-                dimensions.append(Categorical(domain, prior, transform="onehot", name=param_name))
+                dimensions.append(Categorical(
+                    domain, prior, transform="onehot", name=param_name))
     return dimensions
 
 
@@ -84,7 +86,8 @@ def values_to_params(param_values, param_space):
             value = param_space.get_param(param_name)
 
             if isinstance(value, (tuple, list)) and len(value) > 1:
-                raise ValueError("don't know how to complete a configuration that might have multiple values")
+                raise ValueError(
+                    "don't know how to complete a configuration that might have multiple values")
             else:
                 if isinstance(value, (tuple, list)):
                     value = value[0]
@@ -110,14 +113,16 @@ def load_module(runnable_path):
 
     """
     runnable_path = os.path.abspath(runnable_path)
-    spec = importlib.util.spec_from_file_location("runnable", location=runnable_path)
+    spec = importlib.util.spec_from_file_location(
+        "runnable", location=runnable_path)
     runnable = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(runnable)
 
     try:
         getattr(runnable, "run")
     except AttributeError:
-        raise TypeError("module in {} does not contain a \"run\" method".format(runnable_path))
+        raise TypeError(
+            "module in {} does not contain a \"run\" method".format(runnable_path))
 
     return runnable
 
@@ -196,7 +201,8 @@ def update_progress_kuma(progress):
     tqdm.write(offset + '   |               |')
     tqdm.write(offset + '   |  KUMA-SAN IS  |')
     tqdm.write(offset + '   |  OPTIMIZING!  |')
-    tqdm.write(offset + '   |   {:>3}/{:<3}     |'.format(progress.n, progress.total))
+    tqdm.write(
+        offset + '   |   {:>3}/{:<3}     |'.format(progress.n, progress.total))
     tqdm.write(offset + '   |＿＿＿_＿＿＿＿|')
     tqdm.write(offset + ' ( )  ( )||')
     tqdm.write(offset + ' ( •(ｴ)•)|| ')
@@ -230,8 +236,6 @@ def update_progress_kuma(progress):
                    '(PI) Probability of Improvement.')
 @click.option('--plot', is_flag=True, help='shows a convergence plot during the optimization process and saves it at'
                                            'the current working dir')
-@click.option('--logfile', is_flag=True, help="if set outputs a log file with errors that might occur in the working "
-                                              "processes.")
 @click.option('-o', '--out', type=click.Path(), help="output directory for the results file. If plotting "
                                                      "convergence, the plot is also saved in the first directory in the"
                                                      "path.")
@@ -239,12 +243,19 @@ def update_progress_kuma(progress):
                                                     "configuration to a worker for each new result the optimizer gets."
                                                     "--sync mode makes the optimizer wait for all workers before "
                                                     "submitting new configurations to all of them")
-@click.option('--kuma', is_flag=True, help='kuma-san will display the progress on your global optimization procedure')
-def run(params, module, workers, gpu, n, surrogate, acquisition, name, plot, logfile, out, sync, kuma):
+@click.option('--kappa', type=float, default=1.96, help="(default=1.96) Used when the acquisition is LCB."
+                                                        "Controls how much of the variance in the "
+                                                        "predicted values should be taken into account. High values "
+                                                        "favour exploration vs exploitation")
+@click.option('--xi', type=float, default=0.01, help="(default=0.01) Used with EI acquisition: controls how much "
+                                                     "improvement we want over previous best.")
+@click.option('--kuma', is_flag=True, help='kuma-san will display the progress on your global optimization procedure.')
+def run(params, module, workers, gpu, n, surrogate, acquisition, name, plot, out, sync, kappa, xi, kuma):
     logger = logging.getLogger(__name__)
     handler = logging.FileHandler('{name}.log'.format(name=name), delay=True)
     handler.setLevel(logging.ERROR)
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     handler.setFormatter(formatter)
     logger.addHandler(handler)
 
@@ -281,12 +292,20 @@ def run(params, module, workers, gpu, n, surrogate, acquisition, name, plot, log
 
         dimensions = params_to_skopt(param_space)
         optimizer_dims = [d.name for d in dimensions]
+        acquisition_kwargs = None
+        if acquisition == "LCB":
+            acquisition_kwargs = {'kappa': kappa}
+        elif acquisition == "EI":
+            acquisition_kwargs = {'xi': xi}
+
         optimizer = Optimizer(dimensions=dimensions,
+                              acq_func_kwargs=acquisition_kwargs,
                               base_estimator=surrogate,
                               acq_func=acquisition)
 
         out_file = open(out_file_path, 'w')
-        out_writer = csv.DictWriter(out_file, fieldnames=param_space.param_names() + ["id", "evaluation"])
+        out_writer = csv.DictWriter(
+            out_file, fieldnames=param_space.param_names() + ["id", "evaluation"])
         out_writer.writeheader()
 
         # setup process pool and queues
@@ -297,13 +316,15 @@ def run(params, module, workers, gpu, n, surrogate, acquisition, name, plot, log
 
         terminate_flags = [Event() for _ in range(num_workers)]
         processes = [
-            Process(target=worker, args=(i, module, config_queue, result_queue, error_queue, terminate_flags[i]))
+            Process(target=worker, args=(i, module, config_queue,
+                                         result_queue, error_queue, terminate_flags[i]))
             for i in range(num_workers)]
 
         configs = []
         scores = {}
         # get initial points at random and submit one job per worker
-        submit(num_workers, optimizer, optimizer_dims, configs, param_space, config_queue)
+        submit(num_workers, optimizer, optimizer_dims,
+               configs, param_space, config_queue)
         # cfg_if: score
 
         num_completed = 0
@@ -353,7 +374,8 @@ def run(params, module, workers, gpu, n, surrogate, acquisition, name, plot, log
                     if sync and pending == 0:
                         if num_completed != n:
                             num_submit = min(num_workers, n - num_completed)
-                            submit(num_submit, optimizer, optimizer_dims, configs, param_space, config_queue)
+                            submit(num_submit, optimizer, optimizer_dims,
+                                   configs, param_space, config_queue)
                             pending = num_submit
                         else:
                             terminate_flags[pid].set()
@@ -361,14 +383,16 @@ def run(params, module, workers, gpu, n, surrogate, acquisition, name, plot, log
                     # async submission of jobs: as soon as we receive one result we submit the next
                     if not sync:
                         if (num_completed + pending) != n:
-                            submit(1, optimizer, optimizer_dims, configs, param_space, config_queue)
+                            submit(1, optimizer, optimizer_dims,
+                                   configs, param_space, config_queue)
                             pending += 1
                         else:
                             # signal the current worker for termination
                             terminate_flags[pid].set()
 
                     progress_bar.update()
-                    progress_bar.set_postfix({"best solution ": opt_results["fun"]})
+                    progress_bar.set_postfix(
+                        {"best solution ": opt_results["fun"]})
 
                     if kuma:
                         update_progress_kuma(progress_bar)
@@ -393,7 +417,8 @@ def run(params, module, workers, gpu, n, surrogate, acquisition, name, plot, log
 
     except TomlDecodeError as e:
         logger.error(traceback.format_exc())
-        print("\n\n[Invalid parameter file] TOML decode error:\n {}".format(e), file=sys.stderr)
+        print("\n\n[Invalid parameter file] TOML decode error:\n {}".format(
+            e), file=sys.stderr)
     except ParamDecodeError as e:
         logger.error(traceback.format_exc())
         print("\n\n[Invalid parameter file]\n {}".format(e), file=sys.stderr)

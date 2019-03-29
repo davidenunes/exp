@@ -23,7 +23,9 @@ required = [
     'toml',
     'click',
     'numpy',
-    'matplotlib'
+    'matplotlib',
+    'GPUtil',
+    'scikit-optimize'
 ]
 
 

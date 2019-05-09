@@ -58,7 +58,7 @@ Next, we need a configuration file ``basic.conf`` were the parameters are specif
 type = "range"
 bounds = [-10,10]
 ```
-This defines a parameter space with a single parameter ``x`` with values in the range ``[-10,10]``. For how to specify parameter spaces, see the [Parameter Space Specification](#Parameter Space Specification).
+This defines a parameter space with a single parameter ``x`` with values in the range ``[-10,10]``. For how to specify parameter spaces, see the [Parameter Space Specification](#parameter-space-specification).
 
 ### 3. Module Optimization
 Our simple module returns the ``x**2``, the optimizer tries to find the minimum value of this function based on the parameter space given by the configuration file. In this case, the optimizer will look at values of ``x`` between ``[-10,10]`` and try to find the minimum value.

@@ -43,7 +43,7 @@ def run(x=1, **kwargs):
     return x ** 2
 ```
 
-The module simply computes the square of a parameter ``x``. Note that ``kwargs`` is included in case the experiment runner dispatcher sends other parameters (that might not be used by your module). Since run receives a dictionary, you could also define it as follows.
+This module computes the square of a parameter ``x``. Note that ``kwargs`` is included to capture other parameters that the experiment runner might use (even if they are not used by your module). Since run receives a dictionary, you could also define it as follows.
 
 ```python
 def run(**kwargs):

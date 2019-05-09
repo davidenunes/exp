@@ -88,7 +88,7 @@ The optimizer will explore discrete values between -10 and 10 inclusively. Also,
 which in this case converges immediately because the function to be optimized is quite simple, but the goal is to optimize complex models and choosing from a large set of parameters without having to run an exhaustive search through all the possible parameter combinations.
 
 ## Parameter Space Specification
-Parameter space files use [TOML](https://github.com/toml-lang/toml) format, I recommend taking a look at the specification and getting familiar with how to define values, arrays, etc. If a parameter space the file cannot be parsed an error will be thrown. ParamSpaces in EXP has **4 types of parametes**, namely:
+Parameter space files use [TOML](https://github.com/toml-lang/toml) format, I recommend taking a look at the specification and getting familiar with how to define values, arrays, etc. ParamSpaces in EXP has **4 types of parametes**, namely:
 * **value**: single value parameter;
 * **range**: a range of numbers between bounds;
 * **random**: a random *real/int* value between bounds;

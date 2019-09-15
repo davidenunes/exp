@@ -19,6 +19,9 @@ An experiment is a series of runs of a given configurable module for a specified
 * **CUDA gpu workers** one parallel process per available GPUs: uses the variable [CUDA_VISIBLE_DEVICES](https://devblogs.nvidia.com/cuda-pro-tip-control-gpu-visibility-cuda_visible_devices);
 * **global optimization** from parameter spaces (e.g. for hyperparameter tunning) using [scikit-optimize](https://scikit-optimize.github.io/).
 
+## Found this useful?
+<script type='text/javascript' src='https://ko-fi.com/widgets/widget_2.js'></script><script type='text/javascript'>kofiwidget2.init('Buy me a coffee', '#46b883', 'Y8Y0RZO6');kofiwidget2.draw();</script> 
+
 ## Installation
 ``pip install exp`` 
 
